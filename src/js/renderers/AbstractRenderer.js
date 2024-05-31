@@ -46,13 +46,15 @@ constructor(gl, volume, camera, environmentTexture, options = {}) {
     this._clipQuadProgram = WebGL.buildPrograms(gl, {
         quad: SHADERS.quad
     }, MIXINS).quad;
+
 }
 
-destroy() {
+destroy(destroyRender = true) {
     const gl = this._gl;
     this._frameBuffer.destroy();
     this._accumulationBuffer.destroy();
-    this._renderBuffer.destroy();
+    if(destroyRender)
+        this._renderBuffer.destroy();
     gl.deleteTexture(this._transferFunction);
     gl.deleteProgram(this._clipQuadProgram.program);
 }
@@ -91,6 +93,17 @@ _rebuildBuffers() {
     this._renderBuffer = new SingleBuffer(gl, this._getRenderBufferSpec());
 }
 
+_rebuildRender() {
+    if (this._renderBuffer) {
+        this._renderBuffer.destroy();
+    }
+    const gl = this._gl;
+    this._renderBuffer = new SingleBuffer(gl, this._getRenderBufferSpec());
+    if(this._context.toneMapper) {
+        this._context.toneMapper.setTexture(this.getTexture());
+    }
+}
+
 setVolume(volume) {
     this._volume = volume;
     this.reset();
@@ -109,6 +122,10 @@ setResolution(resolution) {
         this._rebuildBuffers();
         this.reset();
     }
+}
+
+setContext(context) {
+    this._context = context;
 }
 
 getTexture() {

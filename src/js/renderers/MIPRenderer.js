@@ -46,6 +46,8 @@ constructor(gl, volume, camera, environmentTexture, options = {}) {
     });
 
     this._programs = WebGL.buildPrograms(this._gl, SHADERS.renderers.MIP, MIXINS);
+    this.startTime = performance.now();
+
 }
 
 destroy() {
@@ -67,6 +69,7 @@ _resetFrame() {
 }
 
 _generateFrame() {
+    this.startTime = performance.now();
     const gl = this._gl;
 
     const { program, uniforms } = this._programs.generate;
@@ -117,6 +120,7 @@ _integrateFrame() {
 }
 
 _renderFrame() {
+    //console.log("render")
     const gl = this._gl;
 
     const { program, uniforms } = this._programs.render;
@@ -128,6 +132,15 @@ _renderFrame() {
     gl.uniform1i(uniforms.uAccumulator, 0);
 
     gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+
+    this._context._MIPmap = { ...this._renderBuffer.getAttachments() };
+    console.log("You are relentless.");
+    // console.log(this._renderBuffer.getAttachments());
+    // console.log("COPY");
+    // console.log(this._context._MIPmap);
+
+    //console.log(`Elapsed time: ${performance.now() - this.startTime} milliseconds`)
 }
 
 _getFrameBufferSpec() {

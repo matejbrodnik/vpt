@@ -150,7 +150,7 @@ setFilter(filter) {
     }
 }
 
-chooseRenderer(renderer) {
+chooseRenderer(renderer, mipReset = false) {
     if (this.renderer) {
         this.renderer.destroy();
     }
@@ -159,6 +159,7 @@ chooseRenderer(renderer) {
         resolution: this.resolution,
         transform: this.volumeTransform,
     });
+    this.renderer.setContext(this);
     this.renderer.reset();
     if (this.toneMapper) {
         this.toneMapper.setTexture(this.renderer.getTexture());
