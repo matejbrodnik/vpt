@@ -50,9 +50,9 @@ void mipmap(
     a = a / 2;
     b = b / 2;
 
-    float aa = float(a) / 511.0;
+    float aa = float(a) / 512.0;
     aa = aa * 2.0 - 1.0;
-    float bb = float(b) / 511.0;
+    float bb = float(b) / 512.0;
     bb = bb * 2.0 - 1.0;
     pos = vec2(aa, bb);
 

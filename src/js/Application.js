@@ -89,6 +89,10 @@ constructor() {
     this._handleToneMapperChange();
 
     this.mainDialog.addEventListener('recordanimation', this._handleRecordAnimation);
+
+    // document.getElementById("pictureButton").addEventListener('click', this.renderingContext.enableBtn());
+    //document.getElementById("pictureButton").onclick = this.renderingContext.enableBtn();
+
 }
 
 async _handleRecordAnimation(e) {

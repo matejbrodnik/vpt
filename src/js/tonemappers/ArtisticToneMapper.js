@@ -67,14 +67,15 @@ _renderFrame() {
 
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this._texture);
-
     gl.uniform1i(uniforms.uTexture, 0);
+
     gl.uniform1f(uniforms.uLow, this.low);
     gl.uniform1f(uniforms.uMid, this.mid);
     gl.uniform1f(uniforms.uHigh, this.high);
     gl.uniform1f(uniforms.uSaturation, this.saturation);
     gl.uniform1f(uniforms.uGamma, this.gamma);
 
+    //gl.drawArrays(gl.POINTS, 0, 512*512);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
 }
 

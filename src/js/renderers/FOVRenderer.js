@@ -4,13 +4,14 @@ import { WebGL } from '../WebGL.js';
 import { AbstractRenderer } from './AbstractRenderer.js';
 
 import { PerspectiveCamera } from '../PerspectiveCamera.js';
+import { MIPRenderer } from './MIPRenderer.js';
 
 const [ SHADERS, MIXINS ] = await Promise.all([
     'shaders.json',
     'mixins.json',
 ].map(url => fetch(url).then(response => response.json())));
 
-export class MCMRenderer extends AbstractRenderer {
+export class FOVRenderer extends AbstractRenderer {
 
 constructor(gl, volume, camera, environmentTexture, options = {}) {
     super(gl, volume, camera, environmentTexture, options);
@@ -55,7 +56,7 @@ constructor(gl, volume, camera, environmentTexture, options = {}) {
 
     this.addEventListener('change', e => {
         const { name, value } = e.detail;
-
+        console.log("TRANSFER FUNCTION");
         if (name === 'transferFunction') {
             this.setTransferFunction(this.transferFunction);
         }
@@ -70,7 +71,7 @@ constructor(gl, volume, camera, environmentTexture, options = {}) {
         }
     });
 
-    this._programs = WebGL.buildPrograms(gl, SHADERS.renderers.MCM, MIXINS);
+    this._programs = WebGL.buildPrograms(gl, SHADERS.renderers.FOV, MIXINS);
 }
 
 destroy() {
@@ -85,12 +86,35 @@ destroy() {
 _resetFrame() {
     const gl = this._gl;
 
+    const mip = new MIPRenderer(gl, this._volume, this._camera, this._environmentTexture, {
+        resolution: this._resolution,
+        transform: this._volumeTransform
+    });
+    mip.setContext(this._context);
+    mip.reset();
+
+    mip.render();
+
+    this._MIPmap = { ...mip._renderBuffer.getAttachments() };
+
+    this._accumulationBuffer.use();
+
     const { program, uniforms } = this._programs.reset;
     gl.useProgram(program);
 
     gl.uniform2f(uniforms.uInverseResolution, 1 / this._resolution, 1 / this._resolution);
     gl.uniform1f(uniforms.uRandSeed, Math.random());
     gl.uniform1f(uniforms.uBlur, 0);
+
+    gl.activeTexture(gl.TEXTURE0);
+
+    gl.bindTexture(gl.TEXTURE_2D, this._MIPmap.color[0]);
+
+    gl.uniform1i(uniforms.uMIP, 0);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_NEAREST);
+    //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.generateMipmap(gl.TEXTURE_2D);
+
 
     const centerMatrix = mat4.fromTranslation(mat4.create(), [-0.5, -0.5, -0.5]);
     const modelMatrix = this._volumeTransform.globalMatrix;
@@ -110,9 +134,22 @@ _resetFrame() {
         gl.COLOR_ATTACHMENT1,
         gl.COLOR_ATTACHMENT2,
         gl.COLOR_ATTACHMENT3,
+        gl.COLOR_ATTACHMENT4,
     ]);
 
     gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+    let error = gl.getError();
+    if(error != 0)
+        console.log("ERROR", error);
+
+    mip.destroy();
+
+    // const { program1, uniforms1 } = this._programs.clear;
+    // gl.useProgram(program1);
+    // gl.drawArrays(gl.TRIANGLES, 0, 3);
+    this._rebuildRender();
+
 }
 
 _generateFrame() {
@@ -152,6 +189,10 @@ _integrateFrame() {
     gl.bindTexture(gl.TEXTURE_2D, this._transferFunction);
     gl.uniform1i(uniforms.uTransferFunction, 6);
 
+    gl.activeTexture(gl.TEXTURE7);
+    gl.bindTexture(gl.TEXTURE_2D, this._accumulationBuffer.getAttachments().color[4]);
+    gl.uniform1i(uniforms.uPositionA, 7);
+
     gl.uniform2f(uniforms.uInverseResolution, 1 / this._resolution, 1 / this._resolution);
     gl.uniform1f(uniforms.uRandSeed, Math.random());
     gl.uniform1f(uniforms.uBlur, 0);
@@ -179,6 +220,7 @@ _integrateFrame() {
         gl.COLOR_ATTACHMENT1,
         gl.COLOR_ATTACHMENT2,
         gl.COLOR_ATTACHMENT3,
+        gl.COLOR_ATTACHMENT4,
     ]);
 
     gl.drawArrays(gl.TRIANGLES, 0, 3);
@@ -190,10 +232,40 @@ _renderFrame() {
     const { program, uniforms } = this._programs.render;
     gl.useProgram(program);
 
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.ONE, gl.ONE);
+
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this._accumulationBuffer.getAttachments().color[3]);
-
     gl.uniform1i(uniforms.uColor, 0);
+
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, this._accumulationBuffer.getAttachments().color[4]);
+    gl.uniform1i(uniforms.uPositionA, 1);
+    
+    gl.drawArrays(gl.POINTS, 0, 512*512);
+    gl.disable(gl.BLEND);
+
+    // this._processFrame();
+}
+
+_processFrame() {
+    const gl = this._gl;
+
+    const { program, uniforms } = this._programs.process;
+    gl.useProgram(program);
+
+    this._processBuffer = new SingleBuffer(gl, this._getRenderBufferSpec());
+
+    this._processBuffer.use();
+
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, this._renderBuffer.getAttachments().color[0]);
+    gl.uniform1i(uniforms.uColor, 0);
+
+    // gl.activeTexture(gl.TEXTURE1);
+    // gl.bindTexture(gl.TEXTURE_2D, this._environmentTexture);
+    // gl.uniform1i(uniformsc.uEnvironment, 1);
 
     gl.drawArrays(gl.TRIANGLES, 0, 3);
 }
@@ -254,11 +326,22 @@ _getAccumulationBufferSpec() {
         type    : gl.FLOAT,
     };
 
+    const positionABufferSpec = {
+        width   : this._resolution,
+        height  : this._resolution,
+        min     : gl.NEAREST,
+        mag     : gl.NEAREST,
+        format  : gl.RGBA,
+        iformat : gl.RGBA32F,
+        type    : gl.FLOAT,
+    };
+
     return [
         positionBufferSpec,
         directionBufferSpec,
         transmittanceBufferSpec,
         radianceBufferSpec,
+        positionABufferSpec,
     ];
 }
 

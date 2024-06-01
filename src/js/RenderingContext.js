@@ -11,6 +11,8 @@ import { ToneMapperFactory } from './tonemappers/ToneMapperFactory.js';
 
 import { CircleAnimator } from './animators/CircleAnimator.js';
 import { OrbitCameraAnimator } from './animators/OrbitCameraAnimator.js';
+import { FOVRenderer } from './renderers/FOVRenderer.js';
+import { MIPRenderer } from './renderers/MIPRenderer.js';
 
 const [ SHADERS, MIXINS ] = await Promise.all([
     'shaders.json',
@@ -55,6 +57,9 @@ constructor(options = {}) {
 
     this.volume = new Volume(this.gl);
     this.volumeTransform = new Transform(new Node());
+    this.once = false;
+    this.countdown = 5;
+
 }
 
 // ============================ WEBGL SUBSYSTEM ============================ //
@@ -100,9 +105,16 @@ initGL() {
         max     : gl.LINEAR,
     });
 
-    this.program = WebGL.buildPrograms(gl, {
-        quad: SHADERS.quad
-    }, MIXINS).quad;
+    this.programs = WebGL.buildPrograms(gl, {
+        quad: SHADERS.quad,
+        quadFov: SHADERS.quadFov
+    }, MIXINS);
+
+}
+
+enableBtn() {
+    console.log("snap");
+    this.countdown = 5;
 }
 
 webglcontextlostHandler(e) {
@@ -150,7 +162,7 @@ setFilter(filter) {
     }
 }
 
-chooseRenderer(renderer, mipReset = false) {
+chooseRenderer(renderer) {
     if (this.renderer) {
         this.renderer.destroy();
     }
@@ -196,8 +208,14 @@ render() {
 
     this.renderer.render();
     this.toneMapper.render();
-
+    
+    if(this.renderer instanceof FOVRenderer)
+        this.program = this.programs.quadFov;
+    else 
+        this.program = this.programs.quad;
+    
     const { program, uniforms } = this.program;
+    
     gl.useProgram(program);
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -207,7 +225,31 @@ render() {
     gl.bindTexture(gl.TEXTURE_2D, this.toneMapper.getTexture());
     gl.uniform1i(uniforms.uTexture, 0);
 
+    if(this.renderer instanceof FOVRenderer) {
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, this.environmentTexture);
+        gl.uniform1i(uniforms.uEnvironment, 1);
+    }
+
     gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+    if(!(this.renderer instanceof MIPRenderer)) {
+        if(this.countdown == 0) {
+            let imageURL  = this.canvas.toDataURL('image/png');
+            var downloadLink = document.createElement('a');
+            downloadLink.href = imageURL;
+            downloadLink.download = 'SLIKA.png';
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+            this.countdown--;
+        }
+        else {
+            this.countdown--;
+        }
+    }
+
+
 }
 
 get resolution() {

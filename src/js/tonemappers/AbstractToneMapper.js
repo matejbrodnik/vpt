@@ -1,6 +1,7 @@
 import { PropertyBag } from '../PropertyBag.js';
 import { WebGL } from '../WebGL.js';
 import { SingleBuffer } from '../SingleBuffer.js';
+import { DoubleBuffer } from '../DoubleBuffer.js';
 
 const [ SHADERS, MIXINS ] = await Promise.all([
     'shaders.json',

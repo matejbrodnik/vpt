@@ -20,7 +20,7 @@ constructor(gl, volume, camera, environmentTexture, options = {}) {
             name: 'steps',
             label: 'Steps',
             type: 'spinner',
-            value: 64,
+            value: 80,
             min: 1,
         },
         {
@@ -134,8 +134,8 @@ _renderFrame() {
     gl.drawArrays(gl.TRIANGLES, 0, 3);
 
 
-    this._context._MIPmap = { ...this._renderBuffer.getAttachments() };
-    console.log("You are relentless.");
+    // this._context._MIPmap = { ...this._renderBuffer.getWriteAttachments() };
+    // console.log("You are relentless.");
     // console.log(this._renderBuffer.getAttachments());
     // console.log("COPY");
     // console.log(this._context._MIPmap);
