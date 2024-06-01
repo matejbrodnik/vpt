@@ -86,16 +86,19 @@ destroy() {
 _resetFrame() {
     const gl = this._gl;
 
-    const mip = new MIPRenderer(gl, this._volume, this._camera, this._environmentTexture, {
-        resolution: this._resolution,
-        transform: this._volumeTransform
-    });
-    mip.setContext(this._context);
-    mip.reset();
+    if(this.mip == null) {
+        this.mip = new MIPRenderer(gl, this._volume, this._camera, this._environmentTexture, {
+            resolution: this._resolution,
+            transform: this._volumeTransform
+        });
+        this.mip.setContext(this._context);
+    }
 
-    mip.render();
+    this.mip.reset();
 
-    this._MIPmap = { ...mip._renderBuffer.getAttachments() };
+    this.mip.render();
+
+    this._MIPmap = { ...this.mip._renderBuffer.getAttachments() };
 
     this._accumulationBuffer.use();
 
@@ -107,10 +110,9 @@ _resetFrame() {
     gl.uniform1f(uniforms.uBlur, 0);
 
     gl.activeTexture(gl.TEXTURE0);
-
     gl.bindTexture(gl.TEXTURE_2D, this._MIPmap.color[0]);
-
     gl.uniform1i(uniforms.uMIP, 0);
+    
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_NEAREST);
     //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.generateMipmap(gl.TEXTURE_2D);
@@ -143,7 +145,7 @@ _resetFrame() {
     if(error != 0)
         console.log("ERROR", error);
 
-    mip.destroy();
+    //this.mip.destroy();
 
     // const { program1, uniforms1 } = this._programs.clear;
     // gl.useProgram(program1);
@@ -192,6 +194,14 @@ _integrateFrame() {
     gl.activeTexture(gl.TEXTURE7);
     gl.bindTexture(gl.TEXTURE_2D, this._accumulationBuffer.getAttachments().color[4]);
     gl.uniform1i(uniforms.uPositionA, 7);
+
+    gl.activeTexture(gl.TEXTURE8);
+    gl.bindTexture(gl.TEXTURE_2D, this._MIPmap.color[0]);
+    gl.uniform1i(uniforms.uMIP, 8);
+    
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_NEAREST);
+    //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.generateMipmap(gl.TEXTURE_2D);
 
     gl.uniform2f(uniforms.uInverseResolution, 1 / this._resolution, 1 / this._resolution);
     gl.uniform1f(uniforms.uRandSeed, Math.random());

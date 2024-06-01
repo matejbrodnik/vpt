@@ -51,7 +51,7 @@ uniform sampler2D uPositionA;
 uniform sampler3D uVolume;
 uniform sampler2D uTransferFunction;
 uniform sampler2D uEnvironment;
-//uniform sampler2D uMIP;
+uniform sampler2D uMIP;
 
 uniform mat4 uMvpInverseMatrix;
 uniform vec2 uInverseResolution;
@@ -73,14 +73,26 @@ layout (location = 4) out vec4 oPositionA;
 
 void resetPhoton(inout uint state, inout Photon photon) {
     vec3 from, to;
-    //vec2 pos;
-    //mipmap(state, vPosition, uMvpInverseMatrix, uInverseResolution, uBlur, uMIP, pos, from, to);
     unprojectRand(state, photon.positionA, uMvpInverseMatrix, uInverseResolution, uBlur, from, to);
     photon.direction = normalize(to - from);
     photon.bounces = 0u;
     vec2 tbounds = max(intersectCube(from, photon.direction), 0.0);
     photon.position = from + tbounds.x * photon.direction;
     photon.transmittance = vec3(1);
+}
+
+void resetPhotonHard(inout uint state, inout Photon photon) {
+    vec3 from, to;
+    vec2 pos;
+    mipmap(state, uMvpInverseMatrix, uInverseResolution, uBlur, uMIP, pos, from, to);
+    photon.direction = normalize(to - from);
+    vec2 tbounds = max(intersectCube(from, photon.direction), 0.0);
+    photon.position = from + tbounds.x * photon.direction;
+    photon.transmittance = vec3(1);
+    photon.radiance = vec3(1);
+    photon.bounces = 0u;
+    photon.samples = 0u;
+    photon.positionA = pos;
 }
 
 vec4 sampleEnvironmentMap(vec3 d) {
@@ -122,25 +134,23 @@ float mean3(vec3 v) {
 void main() {
     Photon photon;
     vec2 mappedPosition = vPosition * 0.5 + 0.5;
-    //mappedPosition = 1.0 - mappedPosition;
+    uint state = hash(uvec3(floatBitsToUint(mappedPosition.x), floatBitsToUint(mappedPosition.y), floatBitsToUint(uRandSeed)));
+
+    vec4 radianceAndSamples = texture(uRadiance, mappedPosition);
+    photon.samples = uint(radianceAndSamples.w + 0.5);
+    if(photon.samples > uint(3)) {
+        resetPhotonHard(state, photon);
+    }
+    else {
+    photon.radiance = radianceAndSamples.rgb;
     photon.position = texture(uPosition, mappedPosition).xyz;
     vec4 directionAndBounces = texture(uDirection, mappedPosition);
     photon.direction = directionAndBounces.xyz;
     photon.bounces = uint(directionAndBounces.w + 0.5);
     photon.transmittance = texture(uTransmittance, mappedPosition).rgb;
-    vec4 radianceAndSamples = texture(uRadiance, mappedPosition);
-    photon.radiance = radianceAndSamples.rgb;
-    photon.samples = uint(radianceAndSamples.w + 0.5);
     photon.positionA = texture(uPositionA, mappedPosition).rg;
-    // if(texture(uMIP, mappedPosition).r == 0.0) {
-    //     oPosition = vec4(photon.position, 0);
-    //     oDirection = vec4(photon.direction, float(photon.bounces));
-    //     oTransmittance = vec4(photon.transmittance, 0);
-    //     oRadiance = vec4(photon.radiance, float(photon.samples));
-    //     return;
-    // }
-
-    uint state = hash(uvec3(floatBitsToUint(mappedPosition.x), floatBitsToUint(mappedPosition.y), floatBitsToUint(uRandSeed)));
+    }
+    
     for (uint i = 0u; i < uSteps; i++) {
         float dist = random_exponential(state, uExtinction);
         photon.position += dist * photon.direction;
@@ -284,7 +294,7 @@ void main() {
     vec3 from, to;
     vec2 pos;
     uint state = hash(uvec3(floatBitsToUint(vPosition.x), floatBitsToUint(vPosition.y), floatBitsToUint(uRandSeed)));
-    mipmap(state, vPosition, uMvpInverseMatrix, uInverseResolution, uBlur, uMIP, pos, from, to);
+    mipmap(state, uMvpInverseMatrix, uInverseResolution, uBlur, uMIP, pos, from, to);
     //unprojectRand(state, vPosition, uMvpInverseMatrix, uInverseResolution, uBlur, from, to);
     
     photon.direction = normalize(to - from);

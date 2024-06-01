@@ -2,7 +2,6 @@
 
 void mipmap(
         inout uint state,
-        in vec2 position,
         in mat4 inverseMvp,
         in vec2 inverseResolution,
         in float blur,
@@ -10,7 +9,6 @@ void mipmap(
         out vec2 pos,
         out vec3 from, out vec3 to)
 {
-    vec2 mappedPosition = position * 0.5 + 0.5;
     int a = 0;
     int b = 0;
     for(int i = 8; i >= 0; i--) {

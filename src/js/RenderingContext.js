@@ -58,7 +58,7 @@ constructor(options = {}) {
     this.volume = new Volume(this.gl);
     this.volumeTransform = new Transform(new Node());
     this.once = false;
-    this.countdown = 5;
+    this.count = 5;
 
 }
 
@@ -201,6 +201,7 @@ chooseToneMapper(toneMapper) {
 }
 
 render() {
+    let startTime = performance.now().toFixed(3);
     const gl = this.gl;
     if (!gl || !this.renderer || !this.toneMapper) {
         return;
@@ -232,20 +233,22 @@ render() {
     }
 
     gl.drawArrays(gl.TRIANGLES, 0, 3);
-
+    let endTime = performance.now().toFixed(3);
+    let elapsedTime = (endTime - startTime) * 1000;
+    console.log(`${elapsedTime.toFixed(3)}`);
     if(!(this.renderer instanceof MIPRenderer)) {
-        if(this.countdown == 0) {
-            let imageURL  = this.canvas.toDataURL('image/png');
-            var downloadLink = document.createElement('a');
-            downloadLink.href = imageURL;
-            downloadLink.download = 'SLIKA.png';
-            document.body.appendChild(downloadLink);
-            downloadLink.click();
-            document.body.removeChild(downloadLink);
-            this.countdown--;
+        if(this.count < 30) {
+            // let imageURL  = this.canvas.toDataURL('image/png');
+            // var downloadLink = document.createElement('a');
+            // downloadLink.href = imageURL;
+            // downloadLink.download = 'SLIKA.png';
+            // document.body.appendChild(downloadLink);
+            // downloadLink.click();
+            // document.body.removeChild(downloadLink);
+            this.count++;
         }
         else {
-            this.countdown--;
+            this.count++;
         }
     }
 
