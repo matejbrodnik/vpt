@@ -60,6 +60,10 @@ destroy(destroyRender = true) {
 }
 
 render() {
+    if(this.count == 0) {
+        this.startTime = performance.now().toFixed(3);
+    }
+
     this._frameBuffer.use();
     this._generateFrame();
 
@@ -69,6 +73,13 @@ render() {
 
     this._renderBuffer.use();
     this._renderFrame();
+
+    if(this.count == 100) {
+        let endTime = performance.now().toFixed(3);
+        let elapsedTime = (endTime - this.startTime) / 100;
+        console.log(`${elapsedTime.toFixed(6)}`);
+    }
+    this.count++;
 }
 
 reset() {
@@ -78,6 +89,7 @@ reset() {
 }
 
 _rebuildBuffers() {
+    this.count = 0;
     if (this._frameBuffer) {
         this._frameBuffer.destroy();
     }
@@ -94,6 +106,7 @@ _rebuildBuffers() {
 }
 
 _rebuildRender() {
+    this.count = 0;
     if (this._renderBuffer) {
         this._renderBuffer.destroy();
     }

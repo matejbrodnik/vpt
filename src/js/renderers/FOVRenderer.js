@@ -21,7 +21,7 @@ constructor(gl, volume, camera, environmentTexture, options = {}) {
             name: 'extinction',
             label: 'Extinction',
             type: 'spinner',
-            value: 50,
+            value: 100,
             min: 0,
         },
         {
@@ -43,7 +43,7 @@ constructor(gl, volume, camera, environmentTexture, options = {}) {
             name: 'steps',
             label: 'Steps',
             type: 'spinner',
-            value: 8,
+            value: 24,
             min: 0,
         },
         {
@@ -147,9 +147,6 @@ _resetFrame() {
 
     //this.mip.destroy();
 
-    // const { program1, uniforms1 } = this._programs.clear;
-    // gl.useProgram(program1);
-    // gl.drawArrays(gl.TRIANGLES, 0, 3);
     this._rebuildRender();
 
 }
@@ -272,10 +269,6 @@ _processFrame() {
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this._renderBuffer.getAttachments().color[0]);
     gl.uniform1i(uniforms.uColor, 0);
-
-    // gl.activeTexture(gl.TEXTURE1);
-    // gl.bindTexture(gl.TEXTURE_2D, this._environmentTexture);
-    // gl.uniform1i(uniformsc.uEnvironment, 1);
 
     gl.drawArrays(gl.TRIANGLES, 0, 3);
 }

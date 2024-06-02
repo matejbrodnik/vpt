@@ -138,7 +138,7 @@ void main() {
 
     vec4 radianceAndSamples = texture(uRadiance, mappedPosition);
     photon.samples = uint(radianceAndSamples.w + 0.5);
-    if(photon.samples > uint(3)) {
+    if(photon.samples >= uint(3)) {
         resetPhotonHard(state, photon);
     }
     else {

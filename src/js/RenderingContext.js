@@ -177,6 +177,7 @@ chooseRenderer(renderer) {
         this.toneMapper.setTexture(this.renderer.getTexture());
     }
     this.isTransformationDirty = true;
+    this.count = 0;
 }
 
 chooseToneMapper(toneMapper) {
@@ -201,7 +202,6 @@ chooseToneMapper(toneMapper) {
 }
 
 render() {
-    let startTime = performance.now().toFixed(3);
     const gl = this.gl;
     if (!gl || !this.renderer || !this.toneMapper) {
         return;
@@ -233,15 +233,18 @@ render() {
     }
 
     gl.drawArrays(gl.TRIANGLES, 0, 3);
-    let endTime = performance.now().toFixed(3);
-    let elapsedTime = (endTime - startTime) * 1000;
-    console.log(`${elapsedTime.toFixed(3)}`);
+
     if(!(this.renderer instanceof MIPRenderer)) {
-        if(this.count < 30) {
+        if(this.count < 100 && this.count % 5 == 0 || this.count == 300) {
             // let imageURL  = this.canvas.toDataURL('image/png');
             // var downloadLink = document.createElement('a');
             // downloadLink.href = imageURL;
-            // downloadLink.download = 'SLIKA.png';
+            // if(this.renderer instanceof FOVRenderer) {
+            //     downloadLink.download = 'FOV.png';
+            // }
+            // else {
+            //     downloadLink.download = 'MCM.png';
+            // }
             // document.body.appendChild(downloadLink);
             // downloadLink.click();
             // document.body.removeChild(downloadLink);
@@ -251,7 +254,6 @@ render() {
             this.count++;
         }
     }
-
 
 }
 
