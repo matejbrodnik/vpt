@@ -19,7 +19,7 @@ void main() {
 // #part /glsl/shaders/tonemappers/ArtisticToneMapper/fragment
 
 #version 300 es
-precision mediump float;
+precision highp float;
 
 #define M_PI 3.1415926535897932384626
 

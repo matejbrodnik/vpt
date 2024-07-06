@@ -42,7 +42,7 @@ constructor(gl, volume, camera, environmentTexture, options = {}) {
             name: 'steps',
             label: 'Steps',
             type: 'spinner',
-            value: 24,
+            value: 200,
             min: 0,
         },
         {
@@ -192,7 +192,6 @@ _renderFrame() {
 
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this._accumulationBuffer.getAttachments().color[3]);
-
     gl.uniform1i(uniforms.uColor, 0);
 
     gl.drawArrays(gl.TRIANGLES, 0, 3);

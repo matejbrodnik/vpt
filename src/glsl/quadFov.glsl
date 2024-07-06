@@ -20,7 +20,7 @@ void main() {
 
 #version 300 es
 precision highp float;
-precision mediump sampler2D;
+precision highp sampler2D;
 
 uniform sampler2D uTexture;
 uniform sampler2D uEnvironment;

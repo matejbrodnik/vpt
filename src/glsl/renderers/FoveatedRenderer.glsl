@@ -57,6 +57,7 @@ uniform mat4 uMvpInverseMatrix;
 uniform vec2 uInverseResolution;
 uniform float uRandSeed;
 uniform float uBlur;
+uniform float uReset;
 
 uniform float uExtinction;
 uniform float uAnisotropy;
@@ -138,7 +139,8 @@ void main() {
 
     vec4 radianceAndSamples = texture(uRadiance, mappedPosition);
     photon.samples = uint(radianceAndSamples.w + 0.5);
-    if(photon.samples >= uint(3)) {
+    // && photon.samples >= uint(10)
+    if(uReset != 0.0) {
         resetPhotonHard(state, photon);
     }
     else {
@@ -218,7 +220,7 @@ void main() {
 
 #version 300 es
 precision highp float;
-precision mediump sampler2D;
+precision highp sampler2D;
 
 uniform sampler2D uColor;
 //uniform sampler2D uMIP;
@@ -231,7 +233,7 @@ out vec4 oColor;
 void main() {
     vec2 mappedPosition = vPosition * 0.5 + 0.5;
     vec4 colorAndSamples = texture(uColor, vPosition);
-    oColor = vec4(colorAndSamples.rgb * colorAndSamples.a * 0.001, colorAndSamples.a * 0.001);
+    oColor = vec4(colorAndSamples.rgb * colorAndSamples.a * 0.0001, colorAndSamples.a * 0.0001);
     //oColor = vec4(colorAndSamples.rgb, 1);
 }
 
@@ -294,8 +296,8 @@ void main() {
     vec3 from, to;
     vec2 pos;
     uint state = hash(uvec3(floatBitsToUint(vPosition.x), floatBitsToUint(vPosition.y), floatBitsToUint(uRandSeed)));
-    mipmap(state, uMvpInverseMatrix, uInverseResolution, uBlur, uMIP, pos, from, to);
-    //unprojectRand(state, vPosition, uMvpInverseMatrix, uInverseResolution, uBlur, from, to);
+    //mipmap(state, uMvpInverseMatrix, uInverseResolution, uBlur, uMIP, pos, from, to);
+    unprojectRand(state, vPosition, uMvpInverseMatrix, uInverseResolution, uBlur, from, to);
     
     photon.direction = normalize(to - from);
     vec2 tbounds = max(intersectCube(from, photon.direction), 0.0);
@@ -305,8 +307,8 @@ void main() {
     photon.bounces = 0u;
     photon.samples = 0u;
 
-    photon.positionA = pos;
-    //photon.positionA = vPosition;
+    //photon.positionA = pos;
+    photon.positionA = vPosition;
 
     oPosition = vec4(photon.position, 0);
     oDirection = vec4(photon.direction, float(photon.bounces));

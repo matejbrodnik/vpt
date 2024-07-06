@@ -43,7 +43,7 @@ constructor(gl, volume, camera, environmentTexture, options = {}) {
             name: 'steps',
             label: 'Steps',
             type: 'spinner',
-            value: 24,
+            value: 200,
             min: 0,
         },
         {
@@ -72,6 +72,8 @@ constructor(gl, volume, camera, environmentTexture, options = {}) {
     });
 
     this._programs = WebGL.buildPrograms(gl, SHADERS.renderers.FOV, MIXINS);
+    this._programs2 = WebGL.buildPrograms(gl, SHADERS.renderers.MCM, MIXINS);
+    this.resetCount = 0;
 }
 
 destroy() {
@@ -203,6 +205,15 @@ _integrateFrame() {
     gl.uniform2f(uniforms.uInverseResolution, 1 / this._resolution, 1 / this._resolution);
     gl.uniform1f(uniforms.uRandSeed, Math.random());
     gl.uniform1f(uniforms.uBlur, 0);
+
+    if(this.resetCount == 2) {
+        gl.uniform1f(uniforms.uReset, 1.0);
+        this.resetCount = 0;
+    }
+    else {
+        gl.uniform1f(uniforms.uReset, 0.0);
+        this.resetCount++;
+    }
 
     gl.uniform1f(uniforms.uExtinction, this.extinction);
     gl.uniform1f(uniforms.uAnisotropy, this.anisotropy);
