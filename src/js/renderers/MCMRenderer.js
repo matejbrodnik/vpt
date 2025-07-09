@@ -20,7 +20,7 @@ constructor(gl, volume, camera, environmentTexture, options = {}) {
             name: 'extinction',
             label: 'Extinction',
             type: 'spinner',
-            value: 100,
+            value: 50,
             min: 0,
         },
         {
@@ -42,7 +42,7 @@ constructor(gl, volume, camera, environmentTexture, options = {}) {
             name: 'steps',
             label: 'Steps',
             type: 'spinner',
-            value: 200,
+            value: 40,
             min: 0,
         },
         {

@@ -37,13 +37,14 @@ out vec4 oColor;
 
 void main() {
     vec4 color = texture(uTexture, vPosition);
-    color = vec4(color.rgb / color.a, 1);
-
+    color = vec4(color.rgb / color.a, 1.0);
     color = (color - uLow) / (uHigh - uLow);
     const vec3 gray = normalize(vec3(1));
     color = vec4(mix(dot(color.rgb, gray) * gray, color.rgb, uSaturation), 1.0);
     float midpoint = (uMid - uLow) / (uHigh - uLow);
     float exponent = -log(midpoint) / log(2.0);
     color = pow(color, vec4(exponent / uGamma));
+
+
     oColor = vec4(color.rgb, 1.0);
 }

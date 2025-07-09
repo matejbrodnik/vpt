@@ -2,12 +2,8 @@
 
 void mipmap(
         inout uint state,
-        in mat4 inverseMvp,
-        in vec2 inverseResolution,
-        in float blur,
         in sampler2D MIP,
-        out vec2 pos,
-        out vec3 from, out vec3 to)
+        out vec2 pos)
 {
     int a = 0;
     int b = 0;
@@ -16,15 +12,9 @@ void mipmap(
         float sw = texelFetch(MIP, ivec2(a, b + 1), i).r;
         float ne = texelFetch(MIP, ivec2(a + 1, b), i).r;
         float se = texelFetch(MIP, ivec2(a + 1, b + 1), i).r;
-        // if(i < 4) {
-        //     nw = nw * nw;
-        //     sw = sw * sw;
-        //     ne = ne * ne;
-        //     se = se * se;
-        // }
 
         float sum = nw + sw + ne + se;
-        state = state + uint(i);
+        // state = state + uint(i);
         float normRand = random_uniform(state);
         normRand *= sum;
         if(normRand < nw) {
@@ -39,21 +29,24 @@ void mipmap(
             a = (a + 1) * 2;
             b *= 2;
         }
-        else if(normRand < sum) {
+        else if(normRand < sum){
             a = (a + 1) * 2;
             b = (b + 1) * 2;
         }
+        else {
+            a = 1;
+            b = 1;
+            break;
+        }
     }
 
-    a = a / 2;
-    b = b / 2;
+    // a = a / 2;
+    // b = b / 2;
 
-    float aa = float(a) / 512.0;
-    aa = aa * 2.0 - 1.0;
-    float bb = float(b) / 512.0;
-    bb = bb * 2.0 - 1.0;
-    pos = vec2(aa, bb);
-
-    unprojectRand(state, pos, inverseMvp, inverseResolution, blur, from, to);
+    // float aa = float(a) / 1024.0;
+    // aa = aa * 2.0 - 1.0;
+    // float bb = float(b) / 1024.0;
+    // bb = bb * 2.0 - 1.0;
+    pos = vec2(float(a) / 1024.0 * 2.0 - 1.0, float(b) / 1024.0 * 2.0 - 1.0);
 
 }

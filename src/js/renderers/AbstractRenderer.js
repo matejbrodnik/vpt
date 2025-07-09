@@ -65,11 +65,13 @@ render() {
     if(this.count == 0) {
         this.startTime = performance.now().toFixed(3);
     }
-    // let gl = this._gl;
-    // if(this.ready) {
-    //     this.query1 = gl.createQuery();
-    //     gl.beginQuery(this.ext.TIME_ELAPSED_EXT, this.query1);
-    // }
+    let gl = this._gl;
+    //let query = gl.createQuery();
+    //gl.beginQuery(this.ext.TIME_ELAPSED_EXT, query);
+    let ext = this.ext;
+    // this.query1 = gl.createQuery();
+    // this.query2 = gl.createQuery();
+    // ext.queryCounterEXT(this.query1, ext.TIMESTAMP_EXT);
 
     this._frameBuffer.use();
     this._generateFrame();
@@ -80,39 +82,35 @@ render() {
 
     this._renderBuffer.use();
     this._renderFrame();
-    // if(this.ready) {
-    //     gl.endQuery(this.ext.TIME_ELAPSED_EXT);
-    //     this.ready = false;
-    // }
+    //gl.endQuery(this.ext.TIME_ELAPSED_EXT);
+    // ext.queryCounterEXT(this.query2, ext.TIMESTAMP_EXT);
+
     if(this.count == 100) {
         let endTime = performance.now().toFixed(3);
         let elapsedTime = (endTime - this.startTime) / 100;
         //console.log(`${elapsedTime.toFixed(6)}`);
     }
     this.count++;
-
+    this.ready = !this.ready;
     // let query = this.query1;
-    // if(query) {
-    //     let available = gl.getQueryParameter(query, gl.QUERY_RESULT_AVAILABLE);
+    // if(this.query1 && this.ready) {
+    //     let available = gl.getQueryParameter(this.query1, gl.QUERY_RESULT_AVAILABLE);
     //     let disjoint = gl.getParameter(this.ext.GPU_DISJOINT_EXT);
 
     //     if (available && !disjoint) {
-    //         // See how much time the rendering of the object took in nanoseconds.
-    //         let timeElapsed = gl.getQueryParameter(query, gl.QUERY_RESULT);
-
-    //         // Do something useful with the time.  Note that care should be
-    //         // taken to use all significant bits of the result, not just the
-    //         // least significant 32 bits.
-    //         console.log(`READ Time: ${timeElapsed / 1000000} ms`);
+    //         let timeStart = gl.getQueryParameter(this.query1, gl.QUERY_RESULT);
+    //         console.log(`READ Time: ${(timeStart) / 1000000.0} ms`);
+    //     }
+    //     else {
+    //         console.log("no2");
     //     }
 
     //     if (available || disjoint) {
-    //         // Clean up the query object.
     //         gl.deleteQuery(this.query1);
-    //         // Don't re-enter this polling loop.
-    //         this.query1 = null;
+    //         this.query1 = gl.createQuery();
+    //         gl.beginQuery(ext.TIME_ELAPSED_EXT, this.query1);
     //     }
-    //     this.ready = true;
+    //     //this.ready = true;
 
     // }
     

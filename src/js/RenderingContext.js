@@ -59,16 +59,14 @@ constructor(options = {}) {
     this.volume = new Volume(this.gl);
     this.volumeTransform = new Transform(new Node());
     this.once = false;
-    this.count1 = 5;
-    this.count2 = 5;
+    this.count1 = 0;
+    this.count2 = 0;
     this.timeoffset = 0;
     this.timeoffset1 = 0;
     this.FOVList = [];
     this.MCMList = [];
-    this.ext = this.gl.getExtension('EXT_disjoint_timer_query_webgl2');
-    if (!this.ext) {
-        console.error('EXT_disjoint_timer_query is not supported');
-    }
+    this.ready = true;
+
 }
 
 // ============================ WEBGL SUBSYSTEM ============================ //
@@ -90,6 +88,10 @@ initGL() {
     this.extLoseContext = gl.getExtension('WEBGL_lose_context');
     this.extColorBufferFloat = gl.getExtension('EXT_color_buffer_float');
     this.extTextureFloatLinear = gl.getExtension('OES_texture_float_linear');
+    this.ext = this.gl.getExtension('EXT_disjoint_timer_query_webgl2');
+    if (!this.ext) {
+        console.error('EXT_disjoint_timer_query is not supported');
+    }
 
     if (!this.extColorBufferFloat) {
         console.error('EXT_color_buffer_float not supported!');
@@ -201,6 +203,8 @@ chooseRenderer(renderer) {
     this.isTransformationDirty = true;
     this.count1 = 0;
     this.count2 = 0;
+    this.timer2 = 0;
+    this.count = 0;
 }
 
 chooseToneMapper(toneMapper) {
@@ -229,13 +233,18 @@ render() {
     if (!gl || !this.renderer || !this.toneMapper) {
         return;
     }
+    let ext = this.ext;
+    if(this.ready) {
+        this.query1 = gl.createQuery();
+        gl.beginQuery(ext.TIME_ELAPSED_EXT, this.query1);
+    }
 
     this.renderer.render();
     this.toneMapper.render();
     
-    if(this.renderer instanceof FOVRenderer)
-        this.program = this.programs.quadFov;
-    else 
+    // if(this.renderer instanceof FOVRenderer)
+    //     this.program = this.programs.quadFov;
+    // else 
         this.program = this.programs.quad;
     
     const { program, uniforms } = this.program;
@@ -256,20 +265,43 @@ render() {
     }
 
     gl.drawArrays(gl.TRIANGLES, 0, 3);
+    if(this.ready) {
+        gl.endQuery(ext.TIME_ELAPSED_EXT);
+    }
+
+    if(this.query1) {
+        let available = gl.getQueryParameter(this.query1, gl.QUERY_RESULT_AVAILABLE);
+        let disjoint = gl.getParameter(this.ext.GPU_DISJOINT_EXT);
+
+        if (available && !disjoint) {
+            let timeStart = gl.getQueryParameter(this.query1, gl.QUERY_RESULT);
+            this.timer2 += timeStart;
+            this.count++;
+        }
+        else {
+            this.ready = false;
+        }
+
+        if (available || disjoint) {
+            gl.deleteQuery(this.query1);
+            this.query1 = null;
+            this.ready = true;
+        }
+    }
 
     if((this.renderer instanceof MCMRenderer)) {
         if(this.count1 == 0) {
             this.timer = performance.now().toFixed(3);
         }
         //if(this.count1 < 100 && this.count1 % 5 == 0 || this.count1 == 300) {
-        if(this.count1 == 10000) {
+        if(this.count1 == 5000) {
             this.pixels = new Uint8Array(512 * 512 * 4);
             gl.readPixels(0, 0, 512, 512, gl.RGBA, gl.UNSIGNED_BYTE, this.pixels);
             //this.renderer.measureTexture = { ...this.toneMapper.getTexture() };
             console.log("MEASURE READY");
             this.first = true;
         }
-        if(this.count1 % 25 == 0 && this.count1 < 501 && this.first) {
+        if(this.count1 % 25 == 0 && this.count1 < 501) {
             let pixels4 = new Uint8Array(512 * 512 * 4);
             this.timer3 = performance.now().toFixed(3);
             gl.readPixels(0, 0, 512, 512, gl.RGBA, gl.UNSIGNED_BYTE, pixels4);
@@ -278,11 +310,32 @@ render() {
 
             console.log("MCM READY");
         }
+        
         this.count1++;
+    }
+    else if((this.renderer instanceof FOVRenderer)) {
+        if(this.count2 == 0) {
+            this.timer = performance.now().toFixed(3);
 
-        if(this.count1 == 501 && this.first) {
-            console.log("MCM TIME");
-            console.log(performance.now().toFixed(3) - this.timer - this.timeoffset1);
+            //gl.beginQuery(this.ext.TIME_ELAPSED_EXT, this.query1);
+        }
+        if(this.count2 % 25 == 0 && this.count2 < 501) {
+            //this.query1 = gl.createQuery();
+            this.timer4 = performance.now().toFixed(3);
+
+            let pixels3 = new Uint8Array(512 * 512 * 4);
+            gl.readPixels(0, 0, 512, 512, gl.RGBA, gl.UNSIGNED_BYTE, pixels3);
+            this.FOVList.push(pixels3);
+
+            this.timeoffset += performance.now().toFixed(3) - this.timer4;
+
+            //gl.endQuery(this.ext.TIME_ELAPSED_EXT);
+            //console.log(this.FOVList);
+        }
+        
+        if(this.count2 == 500 && this.first) {
+            console.log("FOV TIME");
+            console.log(performance.now().toFixed(3) - this.timer - this.timeoffset);
             
             let listF = [];
             let listM = [];
@@ -333,34 +386,14 @@ render() {
             }
             console.log("WHITE %: " + white / it);
         }
-    }
-    else if((this.renderer instanceof FOVRenderer)) {
-        if(this.count2 == 0) {
-            this.timer = performance.now().toFixed(3);
-            //this.query2 = gl.createQuery();
-            //gl.beginQuery(this.ext.TIME_ELAPSED_EXT, this.query2);
-        }
-        if(this.count2 % 25 == 0 && this.count2 < 501) {
-            if(this.count2 == 500) {
-                console.log("FOV TIME");
-                console.log(performance.now().toFixed(3) - this.timer - this.timeoffset);
-            }
-            //this.query1 = gl.createQuery();
-            this.timer4 = performance.now().toFixed(3);
-
-            let pixels3 = new Uint8Array(512 * 512 * 4);
-            gl.readPixels(0, 0, 512, 512, gl.RGBA, gl.UNSIGNED_BYTE, pixels3);
-            this.FOVList.push(pixels3);
-
-            this.timeoffset += performance.now().toFixed(3) - this.timer4;
-
-            //gl.endQuery(this.ext.TIME_ELAPSED_EXT);
-            //console.log(this.FOVList);
-        }
 
         this.count2++;
     }
 
+    if(this.count % 20 == 0 && this.timer2 != 0) {
+        console.log(`READ Time: ${(this.timer2 / 20.0) / 1000000.0} ms`);
+        this.timer2 = 0;
+    }
 }
 
             // let imageURL  = this.canvas.toDataURL('image/png');

@@ -5,6 +5,7 @@ import { AbstractRenderer } from './AbstractRenderer.js';
 
 import { PerspectiveCamera } from '../PerspectiveCamera.js';
 import { MIPRenderer } from './MIPRenderer.js';
+import { MCMRenderer } from './MCMRenderer.js';
 
 const [ SHADERS, MIXINS ] = await Promise.all([
     'shaders.json',
@@ -21,7 +22,7 @@ constructor(gl, volume, camera, environmentTexture, options = {}) {
             name: 'extinction',
             label: 'Extinction',
             type: 'spinner',
-            value: 100,
+            value: 50,
             min: 0,
         },
         {
@@ -43,7 +44,7 @@ constructor(gl, volume, camera, environmentTexture, options = {}) {
             name: 'steps',
             label: 'Steps',
             type: 'spinner',
-            value: 200,
+            value: 40,
             min: 0,
         },
         {
@@ -74,6 +75,8 @@ constructor(gl, volume, camera, environmentTexture, options = {}) {
     this._programs = WebGL.buildPrograms(gl, SHADERS.renderers.FOV, MIXINS);
     this._programs2 = WebGL.buildPrograms(gl, SHADERS.renderers.MCM, MIXINS);
     this.resetCount = 0;
+    this.ready = true;
+    this.generate = true;
 }
 
 destroy() {
@@ -95,14 +98,32 @@ _resetFrame() {
         });
         this.mip.setContext(this._context);
     }
+    // time measure
+    let measure = false;
+    let ext = this._context.ext;
+    if(this.ready && measure) {
+        this.query1 = gl.createQuery();
+        gl.beginQuery(ext.TIME_ELAPSED_EXT, this.query1);
+    }
 
     this.mip.reset();
 
     this.mip.render();
 
-    this._MIPmap = { ...this.mip._renderBuffer.getAttachments() };
+    this._MIPmap = { ...this.mip._renderBuffer.getAttachments() }; // MOGOČE TUKAJ??? KAJ JE BILO TREBA, DA SE TEKSTURA OHRANI/NE POVOZI NA UNDEFINED??
 
     this._accumulationBuffer.use();
+
+    this._context.count2 = 0;
+    this._context.FOVList = [];
+
+    // if(this.mcm == null) {
+    //     this.mcm = new MCMRenderer(gl, this._volume, this._camera, this._environmentTexture, {
+    //         resolution: this._resolution,
+    //         transform: this._volumeTransform
+    //     });
+    //     this.mcm.setContext(this._context);
+    // }
 
     const { program, uniforms } = this._programs.reset;
     gl.useProgram(program);
@@ -111,15 +132,17 @@ _resetFrame() {
     gl.uniform1f(uniforms.uRandSeed, Math.random());
     gl.uniform1f(uniforms.uBlur, 0);
 
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, this._MIPmap.color[0]);
-    gl.uniform1i(uniforms.uMIP, 0);
+    // gl.activeTexture(gl.TEXTURE0);
+    // gl.bindTexture(gl.TEXTURE_2D, this._MIPmap.color[0]);
+    // gl.uniform1i(uniforms.uMIP, 0);
     
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_NEAREST);
-    //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.generateMipmap(gl.TEXTURE_2D);
-
-
+    // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_NEAREST);
+    // //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    // gl.generateMipmap(gl.TEXTURE_2D);
+    
+    if(this.ready && measure) {
+        gl.endQuery(ext.TIME_ELAPSED_EXT);
+    }
     const centerMatrix = mat4.fromTranslation(mat4.create(), [-0.5, -0.5, -0.5]);
     const modelMatrix = this._volumeTransform.globalMatrix;
     const viewMatrix = this._camera.transform.inverseGlobalMatrix;
@@ -150,6 +173,28 @@ _resetFrame() {
     //this.mip.destroy();
 
     this._rebuildRender();
+
+    if(this.query1 && measure) {
+        let available = gl.getQueryParameter(this.query1, gl.QUERY_RESULT_AVAILABLE);
+        let disjoint = gl.getParameter(this.ext.GPU_DISJOINT_EXT);
+
+        if (available && !disjoint) {
+            let timeStart = gl.getQueryParameter(this.query1, gl.QUERY_RESULT);
+            console.log(`READ Time: ${(timeStart) / 1000000.0} ms`);
+
+        }
+        else {
+            this.ready = false;
+        }
+
+        if (available || disjoint) {
+            gl.deleteQuery(this.query1);
+            this.query1 = null;
+            this.ready = true;
+        }
+        //this.ready = true;
+
+    }
 
 }
 
@@ -198,15 +243,20 @@ _integrateFrame() {
     gl.bindTexture(gl.TEXTURE_2D, this._MIPmap.color[0]);
     gl.uniform1i(uniforms.uMIP, 8);
     
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_NEAREST);
+    // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR);
+
     //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.generateMipmap(gl.TEXTURE_2D);
+    if(this.generate) {
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_NEAREST);
+        gl.generateMipmap(gl.TEXTURE_2D);
+        this.generate = false;
+    }
 
     gl.uniform2f(uniforms.uInverseResolution, 1 / this._resolution, 1 / this._resolution);
     gl.uniform1f(uniforms.uRandSeed, Math.random());
     gl.uniform1f(uniforms.uBlur, 0);
 
-    if(this.resetCount == 2) {
+    if(this.resetCount > 1) {
         gl.uniform1f(uniforms.uReset, 1.0);
         this.resetCount = 0;
     }
@@ -256,33 +306,45 @@ _renderFrame() {
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this._accumulationBuffer.getAttachments().color[3]);
     gl.uniform1i(uniforms.uColor, 0);
-
-    gl.activeTexture(gl.TEXTURE1);
-    gl.bindTexture(gl.TEXTURE_2D, this._accumulationBuffer.getAttachments().color[4]);
-    gl.uniform1i(uniforms.uPositionA, 1);
     
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, this._accumulationBuffer.getAttachments().color[5]);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.uniform1i(uniforms.uRadianceA, 1);
+    
+    gl.activeTexture(gl.TEXTURE2);
+    gl.bindTexture(gl.TEXTURE_2D, this._accumulationBuffer.getAttachments().color[4]);
+    gl.uniform1i(uniforms.uPositionA, 2);
+        
     gl.drawArrays(gl.POINTS, 0, 512*512);
     gl.disable(gl.BLEND);
+    if(this.query1) {
+        let available = gl.getQueryParameter(this.query1, gl.QUERY_RESULT_AVAILABLE);
+        let disjoint = gl.getParameter(this.ext.GPU_DISJOINT_EXT);
 
+        if (available && !disjoint) {
+            let timeStart = gl.getQueryParameter(this.query1, gl.QUERY_RESULT);
+            console.log(`READ Time: ${(timeStart) / 1000000.0} ms`);
+
+        }
+        else {
+            this.ready = false;
+        }
+
+        if (available || disjoint) {
+            gl.deleteQuery(this.query1);
+            this.query1 = null;
+            this.ready = true;
+        }
+        //this.ready = true;
+
+    }
     // this._processFrame();
+    this.generate = true;
+    this.resetCount = 0;
 }
 
-_processFrame() {
-    const gl = this._gl;
-
-    const { program, uniforms } = this._programs.process;
-    gl.useProgram(program);
-
-    this._processBuffer = new SingleBuffer(gl, this._getRenderBufferSpec());
-
-    this._processBuffer.use();
-
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, this._renderBuffer.getAttachments().color[0]);
-    gl.uniform1i(uniforms.uColor, 0);
-
-    gl.drawArrays(gl.TRIANGLES, 0, 3);
-}
 
 _getFrameBufferSpec() {
     const gl = this._gl;
@@ -350,12 +412,23 @@ _getAccumulationBufferSpec() {
         type    : gl.FLOAT,
     };
 
+    const radianceABufferSpec = {
+        width   : this._resolution,
+        height  : this._resolution,
+        min     : gl.NEAREST,
+        mag     : gl.NEAREST,
+        format  : gl.RGBA,
+        iformat : gl.RGBA32F,
+        type    : gl.FLOAT,
+    };
+
     return [
         positionBufferSpec,
         directionBufferSpec,
         transmittanceBufferSpec,
         radianceBufferSpec,
         positionABufferSpec,
+        radianceABufferSpec,
     ];
 }
 

@@ -19,9 +19,9 @@ void main() {
 // #part /glsl/shaders/renderers/FOV/integrate/fragment
 
 #version 300 es
-precision mediump float;
-precision mediump sampler2D;
-precision mediump sampler3D;
+precision highp float;
+precision highp sampler2D;
+precision highp sampler3D;
 
 #define EPS 1e-5
 
@@ -85,7 +85,9 @@ void resetPhoton(inout uint state, inout Photon photon) {
 void resetPhotonHard(inout uint state, inout Photon photon) {
     vec3 from, to;
     vec2 pos;
-    mipmap(state, uMvpInverseMatrix, uInverseResolution, uBlur, uMIP, pos, from, to);
+    mipmap(state, uMIP, pos);
+    unprojectRand(state, pos, uMvpInverseMatrix, uInverseResolution, uBlur, from, to);
+
     photon.direction = normalize(to - from);
     vec2 tbounds = max(intersectCube(from, photon.direction), 0.0);
     photon.position = from + tbounds.x * photon.direction;
@@ -144,13 +146,14 @@ void main() {
         resetPhotonHard(state, photon);
     }
     else {
-    photon.radiance = radianceAndSamples.rgb;
-    photon.position = texture(uPosition, mappedPosition).xyz;
-    vec4 directionAndBounces = texture(uDirection, mappedPosition);
-    photon.direction = directionAndBounces.xyz;
-    photon.bounces = uint(directionAndBounces.w + 0.5);
-    photon.transmittance = texture(uTransmittance, mappedPosition).rgb;
-    photon.positionA = texture(uPositionA, mappedPosition).rg;
+        photon.radiance = radianceAndSamples.rgb;
+        photon.position = texture(uPosition, mappedPosition).xyz;
+        vec4 directionAndBounces = texture(uDirection, mappedPosition);
+        photon.bounces = uint(directionAndBounces.w + 0.5);
+        photon.direction = directionAndBounces.xyz;
+        photon.transmittance = texture(uTransmittance, mappedPosition).rgb;
+        photon.positionA = texture(uPositionA, mappedPosition).rg;
+        //photon.positionA = vPosition;
     }
     
     for (uint i = 0u; i < uSteps; i++) {
@@ -212,7 +215,7 @@ void main() {
     int yCoord = gl_VertexID / 512;
     vec2 aPosition = texelFetch(uPositionA, ivec2(xCoord, yCoord), 0).xy;
     gl_Position = vec4(aPosition, 0, 1);
-    vPosition = vec2(float(xCoord) / 511.0, float(yCoord) / 511.0);
+    vPosition = vec2(float(xCoord) / 512.0, float(yCoord) / 512.0);
     gl_PointSize = 1.0;
 }
 
@@ -223,17 +226,24 @@ precision highp float;
 precision highp sampler2D;
 
 uniform sampler2D uColor;
+uniform sampler2D uRadianceA;
 //uniform sampler2D uMIP;
 //uniform sampler2D uPositionA;
 
 in vec2 vPosition;
 
-out vec4 oColor;
+layout (location = 0) out vec4 oColor;
+layout (location = 1) out vec4 oRadianceA;
 
 void main() {
     vec2 mappedPosition = vPosition * 0.5 + 0.5;
     vec4 colorAndSamples = texture(uColor, vPosition);
-    oColor = vec4(colorAndSamples.rgb * colorAndSamples.a * 0.0001, colorAndSamples.a * 0.0001);
+    oColor = vec4(colorAndSamples.rgb * colorAndSamples.a, colorAndSamples.a);
+    oRadianceA = vec4(colorAndSamples.rgb * colorAndSamples.a, colorAndSamples.a);
+
+    // vec4 shifted = colorAndSamples >> 16;
+    // oColor = vec4(shifted.rgb * shifted.a, shifted.a);
+    // oLeftover =  vec4(colorAndSamples.rgb * colorAndSamples.a - shifted.rgb * shifted.a << 16, colorAndSamples.a - shifted.a << 16);
     //oColor = vec4(colorAndSamples.rgb, 1);
 }
 
@@ -258,7 +268,7 @@ void main() {
 // #part /glsl/shaders/renderers/FOV/reset/fragment
 
 #version 300 es
-precision mediump float;
+precision highp float;
 
 // #link /glsl/mixins/Photon
 @Photon
@@ -281,7 +291,7 @@ uniform mat4 uMvpInverseMatrix;
 uniform vec2 uInverseResolution;
 uniform float uRandSeed;
 uniform float uBlur;
-uniform sampler2D uMIP;
+// uniform sampler2D uMIP;
 
 in vec2 vPosition;
 
@@ -296,8 +306,10 @@ void main() {
     vec3 from, to;
     vec2 pos;
     uint state = hash(uvec3(floatBitsToUint(vPosition.x), floatBitsToUint(vPosition.y), floatBitsToUint(uRandSeed)));
-    //mipmap(state, uMvpInverseMatrix, uInverseResolution, uBlur, uMIP, pos, from, to);
+    // mipmap(state, uMvpInverseMatrix, uInverseResolution, uBlur, uMIP, pos, from, to);
+    // photon.positionA = pos;
     unprojectRand(state, vPosition, uMvpInverseMatrix, uInverseResolution, uBlur, from, to);
+    photon.positionA = vPosition;
     
     photon.direction = normalize(to - from);
     vec2 tbounds = max(intersectCube(from, photon.direction), 0.0);
@@ -306,10 +318,6 @@ void main() {
     photon.radiance = vec3(1);
     photon.bounces = 0u;
     photon.samples = 0u;
-
-    //photon.positionA = pos;
-    photon.positionA = vPosition;
-
     oPosition = vec4(photon.position, 0);
     oDirection = vec4(photon.direction, float(photon.bounces));
     oTransmittance = vec4(photon.transmittance, 0);

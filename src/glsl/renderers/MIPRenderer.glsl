@@ -139,7 +139,9 @@ in vec2 vPosition;
 out vec4 oColor;
 
 void main() {
-    float acc = texture(uAccumulator, vPosition).r;
+    float acc = texture(uAccumulator, vPosition).r ;
+    acc = pow(acc, 0.8);
+    // acc += 0.05;
     oColor = vec4(acc, acc, acc, 1);
 }
 

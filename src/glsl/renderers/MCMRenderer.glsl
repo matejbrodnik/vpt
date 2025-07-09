@@ -19,9 +19,9 @@ void main() {
 // #part /glsl/shaders/renderers/MCM/integrate/fragment
 
 #version 300 es
-precision mediump float;
-precision mediump sampler2D;
-precision mediump sampler3D;
+precision highp float;
+precision highp sampler2D;
+precision highp sampler3D;
 
 #define EPS 1e-5
 
@@ -116,16 +116,17 @@ float mean3(vec3 v) {
 void main() {
     Photon photon;
     vec2 mappedPosition = vPosition * 0.5 + 0.5;
+    uint state = hash(uvec3(floatBitsToUint(mappedPosition.x), floatBitsToUint(mappedPosition.y), floatBitsToUint(uRandSeed)));
+    
+    vec4 radianceAndSamples = texture(uRadiance, mappedPosition);
+    photon.radiance = radianceAndSamples.rgb;
+    photon.samples = uint(radianceAndSamples.w + 0.5);
     photon.position = texture(uPosition, mappedPosition).xyz;
     vec4 directionAndBounces = texture(uDirection, mappedPosition);
     photon.direction = directionAndBounces.xyz;
     photon.bounces = uint(directionAndBounces.w + 0.5);
     photon.transmittance = texture(uTransmittance, mappedPosition).rgb;
-    vec4 radianceAndSamples = texture(uRadiance, mappedPosition);
-    photon.radiance = radianceAndSamples.rgb;
-    photon.samples = uint(radianceAndSamples.w + 0.5);
 
-    uint state = hash(uvec3(floatBitsToUint(mappedPosition.x), floatBitsToUint(mappedPosition.y), floatBitsToUint(uRandSeed)));
     for (uint i = 0u; i < uSteps; i++) {
         float dist = random_exponential(state, uExtinction);
         photon.position += dist * photon.direction;
@@ -192,8 +193,8 @@ void main() {
 // #part /glsl/shaders/renderers/MCM/render/fragment
 
 #version 300 es
-precision mediump float;
-precision mediump sampler2D;
+precision highp float;
+precision highp sampler2D;
 
 uniform sampler2D uColor;
 
@@ -226,7 +227,7 @@ void main() {
 // #part /glsl/shaders/renderers/MCM/reset/fragment
 
 #version 300 es
-precision mediump float;
+precision highp float;
 
 // #link /glsl/mixins/Photon
 @Photon
