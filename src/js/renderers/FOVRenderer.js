@@ -22,7 +22,7 @@ constructor(gl, volume, camera, environmentTexture, options = {}) {
             name: 'extinction',
             label: 'Extinction',
             type: 'spinner',
-            value: 50,
+            value: 100,
             min: 0,
         },
         {
@@ -132,13 +132,13 @@ _resetFrame() {
     gl.uniform1f(uniforms.uRandSeed, Math.random());
     gl.uniform1f(uniforms.uBlur, 0);
 
-    // gl.activeTexture(gl.TEXTURE0);
-    // gl.bindTexture(gl.TEXTURE_2D, this._MIPmap.color[0]);
-    // gl.uniform1i(uniforms.uMIP, 0);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, this._MIPmap.color[0]);
+    gl.uniform1i(uniforms.uMIP, 0);
     
-    // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_NEAREST);
-    // //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    // gl.generateMipmap(gl.TEXTURE_2D);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_NEAREST);
+    //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.generateMipmap(gl.TEXTURE_2D);
     
     if(this.ready && measure) {
         gl.endQuery(ext.TIME_ELAPSED_EXT);
@@ -195,7 +195,7 @@ _resetFrame() {
         //this.ready = true;
 
     }
-
+    this.generate = true;
 }
 
 _generateFrame() {
@@ -246,19 +246,20 @@ _integrateFrame() {
     // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR);
 
     //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    if(this.generate) {
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_NEAREST);
-        gl.generateMipmap(gl.TEXTURE_2D);
-        this.generate = false;
-    }
+    // if(this.generate) {
+    //     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_NEAREST);
+    //     gl.generateMipmap(gl.TEXTURE_2D);
+    //     this.generate = false;
+    // }
 
     gl.uniform2f(uniforms.uInverseResolution, 1 / this._resolution, 1 / this._resolution);
     gl.uniform1f(uniforms.uRandSeed, Math.random());
     gl.uniform1f(uniforms.uBlur, 0);
 
-    if(this.resetCount > 1) {
+    if(this.resetCount > 4) {
         gl.uniform1f(uniforms.uReset, 1.0);
         this.resetCount = 0;
+        console.log("RESET");
     }
     else {
         gl.uniform1f(uniforms.uReset, 0.0);
@@ -309,8 +310,8 @@ _renderFrame() {
     
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, this._accumulationBuffer.getAttachments().color[5]);
-    gl.clearColor(0, 0, 0, 0);
-    gl.clear(gl.COLOR_BUFFER_BIT);
+    // gl.clearColor(0, 0, 0, 0);
+    // gl.clear(gl.COLOR_BUFFER_BIT);
     gl.uniform1i(uniforms.uRadianceA, 1);
     
     gl.activeTexture(gl.TEXTURE2);
@@ -319,32 +320,56 @@ _renderFrame() {
         
     gl.drawArrays(gl.POINTS, 0, 512*512);
     gl.disable(gl.BLEND);
-    if(this.query1) {
-        let available = gl.getQueryParameter(this.query1, gl.QUERY_RESULT_AVAILABLE);
-        let disjoint = gl.getParameter(this.ext.GPU_DISJOINT_EXT);
+    // if(this.query1) {
+    //     let available = gl.getQueryParameter(this.query1, gl.QUERY_RESULT_AVAILABLE);
+    //     let disjoint = gl.getParameter(this.ext.GPU_DISJOINT_EXT);
 
-        if (available && !disjoint) {
-            let timeStart = gl.getQueryParameter(this.query1, gl.QUERY_RESULT);
-            console.log(`READ Time: ${(timeStart) / 1000000.0} ms`);
+    //     if (available && !disjoint) {
+    //         let timeStart = gl.getQueryParameter(this.query1, gl.QUERY_RESULT);
+    //         console.log(`READ Time: ${(timeStart) / 1000000.0} ms`);
 
-        }
-        else {
-            this.ready = false;
-        }
+    //     }
+    //     else {
+    //         this.ready = false;
+    //     }
 
-        if (available || disjoint) {
-            gl.deleteQuery(this.query1);
-            this.query1 = null;
-            this.ready = true;
-        }
-        //this.ready = true;
+    //     if (available || disjoint) {
+    //         gl.deleteQuery(this.query1);
+    //         this.query1 = null;
+    //         this.ready = true;
+    //     }
+    //     //this.ready = true;
 
-    }
+    // }
     // this._processFrame();
-    this.generate = true;
-    this.resetCount = 0;
+
+    // this.resetCount = 0;
 }
 
+_processFrame() {
+    const gl = this._gl;
+
+    const { program, uniforms } = this._programs.process;
+    gl.useProgram(program);
+
+    // this._processBuffer = new SingleBuffer(gl, this._getRenderBufferSpec());
+
+    // this._processBuffer.use();
+
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, this._accumulationBuffer.getAttachments().color[3]);
+    gl.uniform1i(uniforms.uColor, 0);
+    
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, this._accumulationBuffer.getAttachments().color[5]);
+    gl.uniform1i(uniforms.uRadianceA, 1);
+    console.log("AAA")
+    // gl.activeTexture(gl.TEXTURE0);
+    // gl.bindTexture(gl.TEXTURE_2D, this._renderBuffer.getAttachments().color[0]);
+    // gl.uniform1i(uniforms.uColor, 0);
+
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+}
 
 _getFrameBufferSpec() {
     const gl = this._gl;

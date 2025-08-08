@@ -88,7 +88,7 @@ render() {
     if(this.count == 100) {
         let endTime = performance.now().toFixed(3);
         let elapsedTime = (endTime - this.startTime) / 100;
-        //console.log(`${elapsedTime.toFixed(6)}`);
+        console.log(`${elapsedTime.toFixed(6)}`);
     }
     this.count++;
     this.ready = !this.ready;
