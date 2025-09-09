@@ -20,9 +20,9 @@ void main() {
 
 #version 300 es
 precision mediump float;
-precision mediump sampler2D;
+precision highp sampler2D;
 
-uniform sampler2D uTexture;
+uniform highp sampler2D uTexture;
 
 in vec2 vPosition;
 

@@ -85,17 +85,20 @@ void resetPhoton(inout uint state, inout Photon photon) {
 void resetPhotonHard(inout uint state, inout Photon photon) {
     vec3 from, to;
     vec2 pos;
-    mipmap(state, uMIP, pos);
+    float pdf;
+    mipmap(state, uMIP, pos, pdf);
     unprojectRand(state, pos, uMvpInverseMatrix, uInverseResolution, uBlur, from, to);
+    // unprojectRand(state, pos, uMvpInverseMatrix, uInverseResolution, uBlur, from, to);
 
     photon.direction = normalize(to - from);
     vec2 tbounds = max(intersectCube(from, photon.direction), 0.0);
     photon.position = from + tbounds.x * photon.direction;
     photon.transmittance = vec3(1);
-    photon.radiance = vec3(1);
+    photon.radiance = vec3(0);
     photon.bounces = 0u;
-    photon.samples = 0u;
+    photon.samples2 = 0.0;
     photon.positionA = pos;
+    photon.pdf = pdf;
 }
 
 vec4 sampleEnvironmentMap(vec3 d) {
@@ -139,20 +142,21 @@ void main() {
     vec2 mappedPosition = vPosition * 0.5 + 0.5;
     uint state = hash(uvec3(floatBitsToUint(mappedPosition.x), floatBitsToUint(mappedPosition.y), floatBitsToUint(uRandSeed)));
 
-    vec4 radianceAndSamples = texture(uRadiance, mappedPosition);
-    photon.samples = uint(radianceAndSamples.w + 0.5);
     // && photon.samples >= uint(10)
     if(uReset != 0.0) {
         resetPhotonHard(state, photon);
     }
     else {
-        photon.radiance = radianceAndSamples.rgb;
+        vec4 radianceAndSamples = texture(uRadiance, mappedPosition);
+        photon.samples2 = 0.0; //uint(radianceAndSamples.w + 0.5);
+        photon.radiance = vec3(0); //radianceAndSamples.rgb;
         photon.position = texture(uPosition, mappedPosition).xyz;
         vec4 directionAndBounces = texture(uDirection, mappedPosition);
         photon.bounces = uint(directionAndBounces.w + 0.5);
         photon.direction = directionAndBounces.xyz;
         photon.transmittance = texture(uTransmittance, mappedPosition).rgb;
         photon.positionA = texture(uPositionA, mappedPosition).rg;
+        photon.pdf = 1.0;
         //photon.positionA = vPosition;
     }
     
@@ -176,14 +180,15 @@ void main() {
             // out of bounds
             vec4 envSample = sampleEnvironmentMap(photon.direction);
             vec3 radiance = photon.transmittance * envSample.rgb;
-            photon.samples++;
-            photon.radiance += (radiance - photon.radiance) / float(photon.samples);
+            photon.samples2 += photon.pdf;
+            photon.radiance += (radiance * photon.pdf);
+            // photon.radiance += (radiance - photon.radiance) / photon.samples2;
             resetPhoton(state, photon);
         } else if (fortuneWheel < PAbsorption) {
             // absorption
             vec3 radiance = vec3(0);
-            photon.samples++;
-            photon.radiance += (radiance - photon.radiance) / float(photon.samples);
+            photon.samples2 += photon.pdf;
+            // photon.radiance += (radiance - photon.radiance) / photon.samples2;
             resetPhoton(state, photon);
         } else if (fortuneWheel < PAbsorption + PScattering) {
             // scattering
@@ -198,8 +203,16 @@ void main() {
     oPosition = vec4(photon.position, 0);
     oDirection = vec4(photon.direction, float(photon.bounces));
     oTransmittance = vec4(photon.transmittance, 0);
-    oRadiance = vec4(photon.radiance, float(photon.samples));
+    oRadiance = vec4(photon.radiance, photon.samples2);
     oPositionA = vec4(photon.positionA, 0, 0);
+    // oPosition = vec4(0);
+    // oDirection = vec4(0);
+    // oTransmittance = vec4(0);
+    // oRadiance = vec4(0);
+    // oPositionA = vec4(vPosition, 0, 0);
+    // if (photon.radiance == vec3(0)) {
+    //     oRadiance = vec4(0, 1, 0, 1);
+    // }
 }
 
 // #part /glsl/shaders/renderers/FOV/render/vertex
@@ -238,7 +251,8 @@ layout (location = 1) out vec4 oRadianceA;
 void main() {
     vec2 mappedPosition = vPosition * 0.5 + 0.5;
     vec4 colorAndSamples = texture(uColor, vPosition);
-    oColor = vec4(colorAndSamples.rgb * colorAndSamples.a, colorAndSamples.a);
+    // oColor = vec4(0, 1, 0, 1);
+    oColor = vec4(colorAndSamples.rgb, colorAndSamples.a);
     oRadianceA = vec4(colorAndSamples.rgb * colorAndSamples.a, colorAndSamples.a);
 
     // vec4 shifted = colorAndSamples >> 16;
@@ -291,7 +305,7 @@ uniform mat4 uMvpInverseMatrix;
 uniform vec2 uInverseResolution;
 uniform float uRandSeed;
 uniform float uBlur;
-// uniform sampler2D uMIP;
+uniform sampler2D uMIP;
 
 in vec2 vPosition;
 
@@ -304,23 +318,24 @@ layout (location = 4) out vec4 oPositionA;
 void main() {
     Photon photon;
     vec3 from, to;
-    vec2 pos;
+    // vec2 pos;
+    vec2 pos = vPosition;
     uint state = hash(uvec3(floatBitsToUint(vPosition.x), floatBitsToUint(vPosition.y), floatBitsToUint(uRandSeed)));
-    // mipmap(state, uMvpInverseMatrix, uInverseResolution, uBlur, uMIP, pos, from, to);
+    // mipmap(state, uMIP, pos);
     // photon.positionA = pos;
-    unprojectRand(state, vPosition, uMvpInverseMatrix, uInverseResolution, uBlur, from, to);
-    photon.positionA = vPosition;
+    unprojectRand(state, pos, uMvpInverseMatrix, uInverseResolution, uBlur, from, to);
+    photon.positionA = pos;
     
     photon.direction = normalize(to - from);
     vec2 tbounds = max(intersectCube(from, photon.direction), 0.0);
     photon.position = from + tbounds.x * photon.direction;
     photon.transmittance = vec3(1);
-    photon.radiance = vec3(1);
+    photon.radiance = vec3(0);
     photon.bounces = 0u;
-    photon.samples = 0u;
+    photon.samples2 = 0.0;
     oPosition = vec4(photon.position, 0);
     oDirection = vec4(photon.direction, float(photon.bounces));
     oTransmittance = vec4(photon.transmittance, 0);
-    oRadiance = vec4(photon.radiance, float(photon.samples));
+    oRadiance = vec4(photon.radiance, photon.samples2);
     oPositionA = vec4(photon.positionA, 0, 0);
 }
