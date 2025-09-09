@@ -12,6 +12,7 @@ import { ToneMapperFactory } from './tonemappers/ToneMapperFactory.js';
 import { CircleAnimator } from './animators/CircleAnimator.js';
 import { OrbitCameraAnimator } from './animators/OrbitCameraAnimator.js';
 import { FOVRenderer } from './renderers/FOVRenderer.js';
+import { MCMRenderer2 } from './renderers/MCMRenderer2.js';
 import { MIPRenderer } from './renderers/MIPRenderer.js';
 import { MCMRenderer } from './renderers/MCMRenderer.js';
 
@@ -206,6 +207,7 @@ chooseRenderer(renderer) {
     this.pendingQueries = [];
     this.queryTime = 0;
     this.query = null;
+    this.queries = [];
 }
 
 chooseToneMapper(toneMapper) {
@@ -235,10 +237,10 @@ render() {
         return;
     }
     let ext = this.ext;
-    if(this.queryTime == 0) {
-        this.query = gl.createQuery();
-        gl.beginQuery(ext.TIME_ELAPSED_EXT, this.query);
-    }
+    // if(this.queryTime == 0) {
+        const query = gl.createQuery();
+        gl.beginQuery(ext.TIME_ELAPSED_EXT, query);
+    // }
 
     this.renderer.render();
     this.toneMapper.render();
@@ -268,37 +270,42 @@ render() {
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     if(this.queryTime == 0) {
         gl.endQuery(ext.TIME_ELAPSED_EXT);
+        this.queries.push(query);
     }
 
     // this.pendingQueries.push(query);
     // const readyQueries = [];
     // for (let q of this.pendingQueries) {
-    if(this.queryTime == 2) {
+    if(this.queryTime == 0) {
         // console.log(this.query);
-
-        const available = gl.getQueryParameter(this.query, gl.QUERY_RESULT_AVAILABLE);
-        const disjoint = gl.getParameter(this.ext.GPU_DISJOINT_EXT);
-
-        if (available) {
-            if (!disjoint) {
-                const elapsedTime = gl.getQueryParameter(this.query, gl.QUERY_RESULT);
-                this.timer2 += elapsedTime;
-                this.count++;
+        if (this.queries.length > 0) {
+            const q = this.queries[0];
+            const available = gl.getQueryParameter(q, gl.QUERY_RESULT_AVAILABLE);
+            const disjoint = gl.getParameter(this.ext.GPU_DISJOINT_EXT);
+    
+            if (available) {
+                if (!disjoint) {
+                    const elapsedTime = gl.getQueryParameter(q, gl.QUERY_RESULT);
+                    this.timer2 += elapsedTime;
+                    this.count++;
+                }
+                else
+                    console.log("DISJOINT");
+                // console.log("PASSED");
+    
+                gl.deleteQuery(q);
+                // q = null;
+                this.queries.shift();
+                // readyQueries.push(q);
             }
             else
-                console.log("DISJOINT");
-            // console.log("PASSED");
-
-            gl.deleteQuery(this.query);
-            this.query = null;
-            // readyQueries.push(q);
+                console.log("NOT READY");
+            // this.queryTime = -1;
         }
-        else
-            console.log("NOT READY");
-        this.queryTime = -1;
+        // console.log("Query count: ", this.queries.length);
     }
 
-    this.queryTime++;
+    // this.queryTime++;
     // this.pendingQueries = this.pendingQueries.filter(q => !readyQueries.includes(q));
 
     if((this.renderer instanceof MCMRenderer)) {
@@ -318,6 +325,7 @@ render() {
             this.timer3 = performance.now().toFixed(3);
             gl.readPixels(0, 0, 512, 512, gl.RGBA, gl.UNSIGNED_BYTE, pixels4);
             this.MCMList.push(pixels4);
+            this.timeoffsetM += performance.now().toFixed(3) - this.timer3;
             this.timeoffsetM += performance.now().toFixed(3) - this.timer3;
 
             if(this.count1 == 500) {
@@ -355,7 +363,7 @@ render() {
                         //console.log(mse);
                     }
                 }
-                console.log("MEASURE " + k * 25);
+                console.log("MEASURE " + (k+1) * 25);
                 console.log(mseF / (512*512));
                 console.log(mseM / (512*512));
                 // listF.push(mseF / (512*512));
@@ -382,7 +390,7 @@ render() {
 
         this.count1++;
     }
-    else if((this.renderer instanceof FOVRenderer)) {
+    else if((this.renderer instanceof FOVRenderer || this.renderer instanceof MCMRenderer2 )) {
         if(this.count2 == 0) {
             this.timerF = performance.now().toFixed(3);
 
@@ -410,8 +418,10 @@ render() {
         this.count2++;
     }
 
-    if(this.count % 50 == 0 && this.timer2 != 0) {
-        console.log(`READ Time: ${(this.timer2 / 50.0) / 1000000.0} ms`);
+    if(this.count % 25 == 0 && this.timer2 != 0) {
+        // if(this.renderer instanceof FOVRenderer)
+        //     this.FOV
+        console.log(`READ Time: ${(this.timer2 / 25.0) / 1000000.0} ms`);
         this.timer2 = 0;
     }
 }

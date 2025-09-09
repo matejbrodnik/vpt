@@ -213,7 +213,7 @@ _getRenderBufferSpec() {
         wrapS   : gl.CLAMP_TO_EDGE,
         wrapT   : gl.CLAMP_TO_EDGE,
         format  : gl.RGBA,
-        iformat : gl.RGBA16F,
+        iformat : gl.RGBA32F,
         type    : gl.FLOAT,
     }];
 }

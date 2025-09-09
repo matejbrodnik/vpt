@@ -23,8 +23,8 @@ precision highp float;
 
 #define M_PI 3.1415926535897932384626
 
-uniform mediump sampler2D uTexture;
-uniform mediump sampler2D uEnvironment;
+uniform highp sampler2D uTexture;
+uniform highp sampler2D uEnvironment;
 uniform float uLow;
 uniform float uMid;
 uniform float uHigh;
@@ -37,7 +37,12 @@ out vec4 oColor;
 
 void main() {
     vec4 color = texture(uTexture, vPosition);
-    color = vec4(color.rgb / color.a, 1.0);
+    // if (color.a > 100000.0) {
+    //     color = vec4(0.0, 0.0, 1.0, 1.0);
+    // }
+    // else {
+        color = vec4(color.rgb / color.a, 1.0); 
+    // }
     color = (color - uLow) / (uHigh - uLow);
     const vec3 gray = normalize(vec3(1));
     color = vec4(mix(dot(color.rgb, gray) * gray, color.rgb, uSaturation), 1.0);
