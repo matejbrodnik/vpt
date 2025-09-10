@@ -60,12 +60,15 @@ constructor(options = {}) {
     this.volume = new Volume(this.gl);
     this.volumeTransform = new Transform(new Node());
     this.once = false;
-    this.count1 = 0;
-    this.count2 = 0;
+    this.countFOV = 0;
+    this.countMCM = 0;
     this.timeoffsetF = 0;
     this.timeoffsetM = 0;
     this.FOVList = [];
     this.MCMList = [];
+    this.timerFOV = 0;
+    this.timerMCM = 0;
+    this.timerMCM2 = 0;
 }
 
 // ============================ WEBGL SUBSYSTEM ============================ //
@@ -200,9 +203,9 @@ chooseRenderer(renderer) {
         this.toneMapper.setTexture(this.renderer.getTexture());
     }
     this.isTransformationDirty = true;
-    this.count1 = 0;
-    this.count2 = 0;
-    this.timer2 = 0;
+    this.countMCM = 0;
+    this.countFOV = 0;
+    this.timer = 0;
     this.count = 0;
     this.pendingQueries = [];
     this.queryTime = 0;
@@ -286,7 +289,15 @@ render() {
             if (available) {
                 if (!disjoint) {
                     const elapsedTime = gl.getQueryParameter(q, gl.QUERY_RESULT);
-                    this.timer2 += elapsedTime;
+                    this.timer += elapsedTime;
+                    if(this.renderer instanceof MCMRenderer && this.countMCM < 501) {
+                        if(this.first)
+                            this.timerMCM2 += elapsedTime;
+                        else
+                            this.timerMCM += elapsedTime;
+                    }
+                    if((this.renderer instanceof FOVRenderer || this.renderer instanceof MCMRenderer2) && this.countFOV < 501)
+                        this.timerFOV += elapsedTime;
                     this.count++;
                 }
                 else
@@ -309,38 +320,45 @@ render() {
     // this.pendingQueries = this.pendingQueries.filter(q => !readyQueries.includes(q));
 
     if((this.renderer instanceof MCMRenderer)) {
-        if(this.count1 == 0) {
-            this.timerM = performance.now().toFixed(3);
-        }
+        // if(this.count1 == 0) {
+        //     this.timerM = performance.now().toFixed(3);
+        // }
         //if(this.count1 < 100 && this.count1 % 5 == 0 || this.count1 == 300) {
-        if(this.count1 == 5000) {
+        if(this.countMCM == 5000) {
             this.pixels = new Uint8Array(512 * 512 * 4);
             gl.readPixels(0, 0, 512, 512, gl.RGBA, gl.UNSIGNED_BYTE, this.pixels);
             //this.renderer.measureTexture = { ...this.toneMapper.getTexture() };
             console.log("-\n-\n-\nMEASURE READY\n-\n-\n-");
             this.first = true;
         }
-        if(this.first && this.count1 % 25 == 0 && this.count1 < 501) {
-            let pixels4 = new Uint8Array(512 * 512 * 4);
-            this.timer3 = performance.now().toFixed(3);
-            gl.readPixels(0, 0, 512, 512, gl.RGBA, gl.UNSIGNED_BYTE, pixels4);
-            this.MCMList.push(pixels4);
-            this.timeoffsetM += performance.now().toFixed(3) - this.timer3;
-            this.timeoffsetM += performance.now().toFixed(3) - this.timer3;
+        if(this.first && this.countMCM % 2 == 0 && this.countMCM < 501) {
+            let pixelsMCM = new Uint8Array(512 * 512 * 4);
+            // this.timer3 = performance.now().toFixed(3);
+            gl.readPixels(0, 0, 512, 512, gl.RGBA, gl.UNSIGNED_BYTE, pixelsMCM);
+            this.MCMList.push(pixelsMCM);
+            // this.timeoffsetM += performance.now().toFixed(3) - this.timer3;
+            // this.timeoffsetM += performance.now().toFixed(3) - this.timer3;
 
-            if(this.count1 == 500) {
+            if(this.countMCM == 500) {
                 console.log("MCM READY");
                 this.second = true;
             }
         }
-        if(this.count1 == 500 && this.second) {
-            console.log("FOV TIME");
-            console.log(this.FOVtime);
-            console.log("MCM TIME");
-            console.log(performance.now().toFixed(3) - this.timerM - this.timeoffsetM);
+        if(this.countMCM == 500 && this.second) {
+            console.log("FOV TIME: ", (this.timerFOV / 500.0).toFixed(2));
+            console.log("MCM TIME: ", (this.timerMCM2 / 500.0).toFixed(2));
+            console.log("MCM TIME (first): ", (this.timerMCM / 500.0).toFixed(2));
+            let ratio = this.timerFOV / this.timerMCM2;
+            console.log("RATIO: ", ratio.toFixed(2));
+            console.log("RATIO (first): ", (this.timerFOV / this.timerMCM).toFixed(2));
             let listF = [];
             let listM = [];
             for(let k = 0; k < this.FOVList.length; k++) { //FOVList length = MCMList length - 1?
+                if(k % 5 != 0)
+                    continue;
+                let k2 = Math.round(k * ratio);
+                if(k2 >= this.MCMList.length)
+                    break;
                 let mseF = 0;
                 let mseM = 0;
                 for(let i = 0; i < 512; i++) {
@@ -354,16 +372,16 @@ render() {
                         let g = this.FOVList[k][index+1];
                         let b = this.FOVList[k][index+2];
     
-                        let rr = this.MCMList[k][index];
-                        let gg = this.MCMList[k][index+1];
-                        let bb = this.MCMList[k][index+2];
+                        let rr = this.MCMList[k2][index];
+                        let gg = this.MCMList[k2][index+1];
+                        let bb = this.MCMList[k2][index+2];
     
                         mseF += ((R - r) * (R - r) + (G - g) * (G - g) + (B - b) * (B - b)) / 3.0;
                         mseM += ((R - rr) * (R - rr) + (G - gg) * (G - gg) + (B - bb) * (B - bb)) / 3.0;
                         //console.log(mse);
                     }
                 }
-                console.log("MEASURE " + (k+1) * 25);
+                console.log("FOV " + k * 2 + " MCM " + k2 * 2);
                 console.log(mseF / (512*512));
                 console.log(mseM / (512*512));
                 // listF.push(mseF / (512*512));
@@ -388,26 +406,26 @@ render() {
             console.log("WHITE %: " + white / it);
         }
 
-        this.count1++;
+        this.countMCM++;
     }
     else if((this.renderer instanceof FOVRenderer || this.renderer instanceof MCMRenderer2 )) {
-        if(this.count2 == 0) {
-            this.timerF = performance.now().toFixed(3);
+        // if(this.count2 == 0) {
+        //     this.timerF = performance.now().toFixed(3);
 
-            //gl.beginQuery(this.ext.TIME_ELAPSED_EXT, this.query1);
-        }
-        if(this.count2 % 25 == 0 && this.count2 < 501) {
+        //     //gl.beginQuery(this.ext.TIME_ELAPSED_EXT, this.query1);
+        // }
+        if(this.countFOV % 2 == 0 && this.countFOV < 501) {
             //this.query1 = gl.createQuery();
-            this.timer4 = performance.now().toFixed(3);
+            // this.timer4 = performance.now().toFixed(3);
 
-            let pixels3 = new Uint8Array(512 * 512 * 4);
-            gl.readPixels(0, 0, 512, 512, gl.RGBA, gl.UNSIGNED_BYTE, pixels3);
-            this.FOVList.push(pixels3);
-            this.timeoffsetF += performance.now().toFixed(3) - this.timer4;
+            let pixelsFOV = new Uint8Array(512 * 512 * 4);
+            gl.readPixels(0, 0, 512, 512, gl.RGBA, gl.UNSIGNED_BYTE, pixelsFOV);
+            this.FOVList.push(pixelsFOV);
+            // this.timeoffsetF += performance.now().toFixed(3) - this.timer4;
 
-            if(this.count2 == 500) {
+            if(this.countFOV == 500) {
                 console.log("FOV READY");
-                this.FOVtime = performance.now().toFixed(3) - this.timerF - this.timeoffsetF;
+                // this.FOVtime = performance.now().toFixed(3) - this.timerF - this.timeoffsetF;
             }
             //gl.endQuery(this.ext.TIME_ELAPSED_EXT);
             //console.log(this.FOVList);
@@ -415,14 +433,14 @@ render() {
         
         
 
-        this.count2++;
+        this.countFOV++;
     }
 
-    if(this.count % 25 == 0 && this.timer2 != 0) {
+    if(this.count % 25 == 0 && this.timer != 0) {
         // if(this.renderer instanceof FOVRenderer)
         //     this.FOV
-        console.log(`READ Time: ${(this.timer2 / 25.0) / 1000000.0} ms`);
-        this.timer2 = 0;
+        console.log(`READ Time: ${((this.timer / 25.0) / 1000000.0).toFixed(2)} ms`);
+        this.timer = 0;
     }
 }
 

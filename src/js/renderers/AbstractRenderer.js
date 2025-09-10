@@ -62,9 +62,9 @@ destroy(destroyRender = true) {
 }
 
 render() {
-    if(this.count == 0) {
-        this.startTime = performance.now().toFixed(3);
-    }
+    // if(this.count == 0) {
+    //     this.startTime = performance.now().toFixed(3);
+    // }
     let gl = this._gl;
     //let query = gl.createQuery();
     //gl.beginQuery(this.ext.TIME_ELAPSED_EXT, query);
@@ -85,12 +85,12 @@ render() {
     //gl.endQuery(this.ext.TIME_ELAPSED_EXT);
     // ext.queryCounterEXT(this.query2, ext.TIMESTAMP_EXT);
 
-    if(this.count == 100) {
-        let endTime = performance.now().toFixed(3);
-        let elapsedTime = (endTime - this.startTime) / 100;
-        console.log(`${elapsedTime.toFixed(6)}`);
-    }
-    this.count++;
+    // if(this.count == 100) {
+    //     let endTime = performance.now().toFixed(3);
+    //     let elapsedTime = (endTime - this.startTime) / 100;
+    //     console.log(`${elapsedTime.toFixed(6)}`);
+    // }
+    // this.count++;
     this.ready = !this.ready;
     // let query = this.query1;
     // if(this.query1 && this.ready) {
