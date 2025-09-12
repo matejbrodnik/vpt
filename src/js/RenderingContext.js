@@ -348,11 +348,16 @@ render() {
             console.log("FOV TIME: ", (this.timerFOV / 500.0).toFixed(2));
             console.log("MCM TIME: ", (this.timerMCM2 / 500.0).toFixed(2));
             console.log("MCM TIME (first): ", (this.timerMCM / 500.0).toFixed(2));
-            let ratio = this.timerFOV / this.timerMCM2;
+            let ratio = this.timerFOV / this.timerMCM;
             console.log("RATIO: ", ratio.toFixed(2));
-            console.log("RATIO (first): ", (this.timerFOV / this.timerMCM).toFixed(2));
+            console.log("RATIO (first): ", (this.timerFOV / this.timerMCM2).toFixed(2));
             let listF = [];
             let listM = [];
+            let resultsFOV = "";
+            let resultsMCM = "";
+            let bpFOV = "";
+            let bpMCM = "";
+            let diff = "";
             for(let k = 0; k < this.FOVList.length; k++) { //FOVList length = MCMList length - 1?
                 if(k % 5 != 0)
                     continue;
@@ -381,14 +386,22 @@ render() {
                         //console.log(mse);
                     }
                 }
+
+                bpFOV += "FOV " + k * 2 + "\n";
+                bpMCM += "MCM " + k2 * 2 + "\n";
+                resultsFOV += (mseF / (512*512)).toFixed(2) + "\n";
+                resultsMCM += (mseM / (512*512)).toFixed(2) + "\n";
+                diff += (mseF / (512*512) - mseM / (512*512)).toFixed(2) + "\n";
                 console.log("FOV " + k * 2 + " MCM " + k2 * 2);
                 console.log(mseF / (512*512));
                 console.log(mseM / (512*512));
-                // listF.push(mseF / (512*512));
-                // listM.push(mseM / (512*512));
             }
-            // console.log(listF);
-            // console.log(listM);
+            // console.log("FOV RESULTS:\n" + resultsFOV);
+            // console.log("MCM RESULTS:\n" + resultsMCM);
+            console.log("DIFFERENCE:\n" + diff);
+            // console.log("FOV BP:\n" + bpFOV);
+            // console.log("MCM BP:\n" + bpMCM);
+
 
             let white = 0;
             let it = 0;

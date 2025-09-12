@@ -40,9 +40,11 @@ void main() {
     // if (color.a > 100000.0) {
     //     color = vec4(0.0, 0.0, 1.0, 1.0);
     // }
-    // else {
-        color = vec4(color.rgb / color.a, 1.0); 
-    // }
+
+    if(color.rgba == vec4(0)) {
+        color.rgba = vec4(1);
+    }
+    color = vec4(color.rgb / color.a, 1.0); 
     color = (color - uLow) / (uHigh - uLow);
     const vec3 gray = normalize(vec3(1));
     color = vec4(mix(dot(color.rgb, gray) * gray, color.rgb, uSaturation), 1.0);

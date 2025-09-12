@@ -46,7 +46,6 @@ uniform sampler2D uPosition;
 uniform sampler2D uDirection;
 uniform sampler2D uTransmittance;
 uniform sampler2D uRadiance;
-uniform sampler2D uPositionA;
 
 uniform sampler3D uVolume;
 uniform sampler2D uTransferFunction;
@@ -150,12 +149,14 @@ void main() {
         vec4 radianceAndSamples = texture(uRadiance, mappedPosition);
         photon.samples2 = 0.0; //uint(radianceAndSamples.w + 0.5);
         photon.radiance = vec3(0); //radianceAndSamples.rgb;
-        photon.position = texture(uPosition, mappedPosition).xyz;
+        // photon.position = texture(uPosition, mappedPosition).xyz;
+        photon.position = vec3(texture(uPosition, mappedPosition).xy, texture(uTransmittance, mappedPosition).w);
         vec4 directionAndBounces = texture(uDirection, mappedPosition);
         photon.bounces = uint(directionAndBounces.w + 0.5);
         photon.direction = directionAndBounces.xyz;
         photon.transmittance = texture(uTransmittance, mappedPosition).rgb;
-        photon.positionA = texture(uPositionA, mappedPosition).rg;
+        photon.positionA = texture(uPosition, mappedPosition).zw;
+        // photon.positionA = texture(uPositionA, mappedPosition).rg;
         photon.pdf = 1.0;
         //photon.positionA = vPosition;
     }
@@ -200,17 +201,17 @@ void main() {
         }
     }
 
-    oPosition = vec4(photon.position, 0);
     oDirection = vec4(photon.direction, float(photon.bounces));
-    oTransmittance = vec4(photon.transmittance, 0);
     oRadiance = vec4(photon.radiance, photon.samples2);
-    oPositionA = vec4(photon.positionA, 0, 0);
-    // oPosition = vec4(0);
-    // oDirection = vec4(0);
-    // oTransmittance = vec4(0);
-    // oRadiance = vec4(0);
-    // oPositionA = vec4(vPosition, 0, 0);
-    // if (photon.radiance == vec3(0)) {
+    oPosition = vec4(photon.position.xy, photon.positionA);
+    oTransmittance = vec4(photon.transmittance, photon.position.z);
+    // oPositionA = vec4(photon.positionA, 0, 0);
+    // oPosition = vec4(photon.position, 0);
+    // oTransmittance = vec4(photon.transmittance, 0);
+    // oPositionA = vec4(photon.positionA, 0, 0);
+
+
+    // if (photon.samples2 == 0.0 && photon.positionA == vPosition) {
     //     oRadiance = vec4(0, 1, 0, 1);
     // }
 }
@@ -220,13 +221,13 @@ void main() {
 #version 300 es
 
 out vec2 vPosition;
-uniform sampler2D uPositionA;
+uniform sampler2D uPosition;
 
 void main() {
     
     int xCoord = gl_VertexID % 512;
     int yCoord = gl_VertexID / 512;
-    vec2 aPosition = texelFetch(uPositionA, ivec2(xCoord, yCoord), 0).xy;
+    vec2 aPosition = texelFetch(uPosition, ivec2(xCoord, yCoord), 0).zw;
     gl_Position = vec4(aPosition, 0, 1);
     vPosition = vec2(float(xCoord) / 512.0, float(yCoord) / 512.0);
     gl_PointSize = 1.0;
@@ -239,26 +240,16 @@ precision highp float;
 precision highp sampler2D;
 
 uniform sampler2D uColor;
-uniform sampler2D uRadianceA;
 //uniform sampler2D uMIP;
-//uniform sampler2D uPositionA;
 
 in vec2 vPosition;
 
 layout (location = 0) out vec4 oColor;
-layout (location = 1) out vec4 oRadianceA;
 
 void main() {
     vec2 mappedPosition = vPosition * 0.5 + 0.5;
     vec4 colorAndSamples = texture(uColor, vPosition);
-    // oColor = vec4(0, 1, 0, 1);
     oColor = vec4(colorAndSamples.rgb, colorAndSamples.a);
-    oRadianceA = vec4(colorAndSamples.rgb * colorAndSamples.a, colorAndSamples.a);
-
-    // vec4 shifted = colorAndSamples >> 16;
-    // oColor = vec4(shifted.rgb * shifted.a, shifted.a);
-    // oLeftover =  vec4(colorAndSamples.rgb * colorAndSamples.a - shifted.rgb * shifted.a << 16, colorAndSamples.a - shifted.a << 16);
-    //oColor = vec4(colorAndSamples.rgb, 1);
 }
 
 // #part /glsl/shaders/renderers/FOV/reset/vertex
@@ -305,7 +296,7 @@ uniform mat4 uMvpInverseMatrix;
 uniform vec2 uInverseResolution;
 uniform float uRandSeed;
 uniform float uBlur;
-uniform sampler2D uMIP;
+// uniform sampler2D uMIP;
 
 in vec2 vPosition;
 
@@ -313,7 +304,6 @@ layout (location = 0) out vec4 oPosition;
 layout (location = 1) out vec4 oDirection;
 layout (location = 2) out vec4 oTransmittance;
 layout (location = 3) out vec4 oRadiance;
-layout (location = 4) out vec4 oPositionA;
 
 void main() {
     Photon photon;
@@ -333,9 +323,11 @@ void main() {
     photon.radiance = vec3(0);
     photon.bounces = 0u;
     photon.samples2 = 0.0;
-    oPosition = vec4(photon.position, 0);
     oDirection = vec4(photon.direction, float(photon.bounces));
-    oTransmittance = vec4(photon.transmittance, 0);
     oRadiance = vec4(photon.radiance, photon.samples2);
-    oPositionA = vec4(photon.positionA, 0, 0);
+    oPosition = vec4(photon.position.xy, photon.positionA);
+    oTransmittance = vec4(photon.transmittance, photon.position.z);
+    // oPosition = vec4(photon.position, 0);
+    // oTransmittance = vec4(photon.transmittance, 0);
+    // oPositionA = vec4(photon.positionA, 0, 0);
 }

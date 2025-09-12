@@ -151,7 +151,6 @@ _resetFrame() {
         gl.COLOR_ATTACHMENT1,
         gl.COLOR_ATTACHMENT2,
         gl.COLOR_ATTACHMENT3,
-        gl.COLOR_ATTACHMENT4,
     ]);
 
     gl.drawArrays(gl.TRIANGLES, 0, 3);
@@ -159,32 +158,12 @@ _resetFrame() {
     let error = gl.getError();
     if(error != 0)
         console.log("ERROR", error);
+    this.resetMax = 3;
     this.resetCount = 0;
     //this.mip.destroy();
 
     this._rebuildRender();
 
-    // if(this.query1 && measure) {
-    //     let available = gl.getQueryParameter(this.query1, gl.QUERY_RESULT_AVAILABLE);
-    //     let disjoint = gl.getParameter(this.ext.GPU_DISJOINT_EXT);
-
-    //     if (available && !disjoint) {
-    //         let timeStart = gl.getQueryParameter(this.query1, gl.QUERY_RESULT);
-    //         console.log(`READ Time: ${(timeStart) / 1000000.0} ms`);
-
-    //     }
-    //     else {
-    //         this.ready = false;
-    //     }
-
-    //     if (available || disjoint) {
-    //         gl.deleteQuery(this.query1);
-    //         this.query1 = null;
-    //         this.ready = true;
-    //     }
-    //     //this.ready = true;
-
-    // }
 
 }
 
@@ -226,12 +205,8 @@ _integrateFrame() {
     gl.uniform1i(uniforms.uTransferFunction, 6);
 
     gl.activeTexture(gl.TEXTURE7);
-    gl.bindTexture(gl.TEXTURE_2D, this._accumulationBuffer.getAttachments().color[4]);
-    gl.uniform1i(uniforms.uPositionA, 7);
-
-    gl.activeTexture(gl.TEXTURE8);
     gl.bindTexture(gl.TEXTURE_2D, this._MIPmap.color[0]);
-    gl.uniform1i(uniforms.uMIP, 8);
+    gl.uniform1i(uniforms.uMIP, 7);
     
     // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR);
 
@@ -246,9 +221,10 @@ _integrateFrame() {
     gl.uniform1f(uniforms.uRandSeed, Math.random());
     gl.uniform1f(uniforms.uBlur, 0);
 
-    if(this.resetCount > 3) {
+    if(this.resetCount >= this.resetMax) {
         gl.uniform1f(uniforms.uReset, 1.0);
         this.resetCount = 0;
+        this.resetMax++;
         // console.log("RESET")
     }
     else {
@@ -280,7 +256,6 @@ _integrateFrame() {
         gl.COLOR_ATTACHMENT1,
         gl.COLOR_ATTACHMENT2,
         gl.COLOR_ATTACHMENT3,
-        gl.COLOR_ATTACHMENT4,
     ]);
 
     gl.drawArrays(gl.TRIANGLES, 0, 3);
@@ -299,40 +274,13 @@ _renderFrame() {
     gl.bindTexture(gl.TEXTURE_2D, this._accumulationBuffer.getAttachments().color[3]);
     gl.uniform1i(uniforms.uColor, 0);
     
-    gl.activeTexture(gl.TEXTURE1);
-    gl.bindTexture(gl.TEXTURE_2D, this._accumulationBuffer.getAttachments().color[5]);
-    // gl.clearColor(0, 0, 0, 0);
-    // gl.clear(gl.COLOR_BUFFER_BIT);
-    gl.uniform1i(uniforms.uRadianceA, 1);
-    
     gl.activeTexture(gl.TEXTURE2);
-    gl.bindTexture(gl.TEXTURE_2D, this._accumulationBuffer.getAttachments().color[4]);
-    gl.uniform1i(uniforms.uPositionA, 2);
+    gl.bindTexture(gl.TEXTURE_2D, this._accumulationBuffer.getAttachments().color[0]);
+    gl.uniform1i(uniforms.uPosition, 2);
         
     gl.drawArrays(gl.POINTS, 0, 512*512);
     gl.disable(gl.BLEND);
-    // if(this.query1) {
-    //     let available = gl.getQueryParameter(this.query1, gl.QUERY_RESULT_AVAILABLE);
-    //     let disjoint = gl.getParameter(this.ext.GPU_DISJOINT_EXT);
 
-    //     if (available && !disjoint) {
-    //         let timeStart = gl.getQueryParameter(this.query1, gl.QUERY_RESULT);
-    //         console.log(`READ Time: ${(timeStart) / 1000000.0} ms`);
-
-    //     }
-    //     else {
-    //         this.ready = false;
-    //     }
-
-    //     if (available || disjoint) {
-    //         gl.deleteQuery(this.query1);
-    //         this.query1 = null;
-    //         this.ready = true;
-    //     }
-    //     //this.ready = true;
-
-    // }
-    // this._processFrame();
     this.generate = true;
 }
 
@@ -393,33 +341,11 @@ _getAccumulationBufferSpec() {
         type    : gl.FLOAT,
     };
 
-    const positionABufferSpec = {
-        width   : this._resolution,
-        height  : this._resolution,
-        min     : gl.NEAREST,
-        mag     : gl.NEAREST,
-        format  : gl.RGBA,
-        iformat : gl.RGBA32F,
-        type    : gl.FLOAT,
-    };
-
-    const radianceABufferSpec = {
-        width   : this._resolution,
-        height  : this._resolution,
-        min     : gl.NEAREST,
-        mag     : gl.NEAREST,
-        format  : gl.RGBA,
-        iformat : gl.RGBA32F,
-        type    : gl.FLOAT,
-    };
-
     return [
         positionBufferSpec,
         directionBufferSpec,
         transmittanceBufferSpec,
         radianceBufferSpec,
-        positionABufferSpec,
-        radianceABufferSpec,
     ];
 }
 
