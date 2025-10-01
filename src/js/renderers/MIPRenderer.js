@@ -20,7 +20,7 @@ constructor(gl, volume, camera, environmentTexture, options = {}) {
             name: 'steps',
             label: 'Steps',
             type: 'spinner',
-            value: 200,
+            value: 300,
             min: 1,
         },
         {

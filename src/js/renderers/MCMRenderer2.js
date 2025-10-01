@@ -35,14 +35,14 @@ constructor(gl, volume, camera, environmentTexture, options = {}) {
             name: 'bounces',
             label: 'Max bounces',
             type: 'spinner',
-            value: 14,
+            value: 8,
             min: 0,
         },
         {
             name: 'steps',
             label: 'Steps',
             type: 'spinner',
-            value: 120,
+            value: 40,
             min: 0,
         },
         {

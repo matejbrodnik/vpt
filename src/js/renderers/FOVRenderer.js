@@ -22,7 +22,7 @@ constructor(gl, volume, camera, environmentTexture, options = {}) {
             name: 'extinction',
             label: 'Extinction',
             type: 'spinner',
-            value: 50,
+            value: 100,
             min: 0,
         },
         {
@@ -76,6 +76,7 @@ constructor(gl, volume, camera, environmentTexture, options = {}) {
     this._programs2 = WebGL.buildPrograms(gl, SHADERS.renderers.MCM, MIXINS);
     this.ready = true;
     this.generate = true;
+    this.laps = 0;
 }
 
 destroy() {
@@ -88,6 +89,10 @@ destroy() {
 }
 
 _resetFrame() {
+    // console.log(this.laps);
+    // this.laps++;
+    // this._context.cameraAnimator._zoom(-0.05);
+
     const gl = this._gl;
 
     if(this.mip == null) {
@@ -98,13 +103,16 @@ _resetFrame() {
         this.mip.setContext(this._context);
     }
     // time measure
-    let measure = false;
-    let ext = this._context.ext;
-    if(this.ready && measure) {
-        this.query1 = gl.createQuery();
-        gl.beginQuery(ext.TIME_ELAPSED_EXT, this.query1);
-    }
-
+    // let measure = false;
+    // let ext = this._context.ext;
+    // if(this.ready && measure) {
+    //     this.query1 = gl.createQuery();
+    //     gl.beginQuery(ext.TIME_ELAPSED_EXT, this.query1);
+    // }
+    // if(this._context.cameraAnimator)
+    //     console.log(this._context.cameraAnimator);
+    // else
+    
     this.mip.reset();
 
     this.mip.render();
@@ -114,6 +122,9 @@ _resetFrame() {
     this._accumulationBuffer.use(); //
 
     this._context.count2 = 0;
+
+    // this._context.cameraAnimator._zoom(0.05);
+
 
     const { program, uniforms } = this._programs.reset;
     gl.useProgram(program);
@@ -130,9 +141,9 @@ _resetFrame() {
     //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.generateMipmap(gl.TEXTURE_2D);
     
-    if(this.ready && measure) {
-        gl.endQuery(ext.TIME_ELAPSED_EXT);
-    }
+    // if(this.ready && measure) {
+    //     gl.endQuery(ext.TIME_ELAPSED_EXT);
+    // }
     const centerMatrix = mat4.fromTranslation(mat4.create(), [-0.5, -0.5, -0.5]);
     const modelMatrix = this._volumeTransform.globalMatrix;
     const viewMatrix = this._camera.transform.inverseGlobalMatrix;
@@ -158,8 +169,8 @@ _resetFrame() {
     let error = gl.getError();
     if(error != 0)
         console.log("ERROR", error);
-    this.resetMax = 3;
-    this.resetCount = 0;
+    this.resetMax = 4;
+    this.resetCount = 4;
     //this.mip.destroy();
 
     this._rebuildRender();
@@ -221,16 +232,13 @@ _integrateFrame() {
     gl.uniform1f(uniforms.uRandSeed, Math.random());
     gl.uniform1f(uniforms.uBlur, 0);
 
-    if(this.resetCount >= this.resetMax) {
-        gl.uniform1f(uniforms.uReset, 1.0);
-        this.resetCount = 0;
-        this.resetMax++;
-        // console.log("RESET")
+    gl.uniform1f(uniforms.uReset, this.resetCount);
+    
+    if(this.resetCount > 0) {
+        this.resetCount--;
     }
     else {
-        gl.uniform1f(uniforms.uReset, 0.0);
-        this.resetCount++;
-
+        this.resetCount = this.resetMax;
     }
 
     gl.uniform1f(uniforms.uExtinction, this.extinction);
@@ -274,9 +282,9 @@ _renderFrame() {
     gl.bindTexture(gl.TEXTURE_2D, this._accumulationBuffer.getAttachments().color[3]);
     gl.uniform1i(uniforms.uColor, 0);
     
-    gl.activeTexture(gl.TEXTURE2);
+    gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, this._accumulationBuffer.getAttachments().color[0]);
-    gl.uniform1i(uniforms.uPosition, 2);
+    gl.uniform1i(uniforms.uPosition, 1);
         
     gl.drawArrays(gl.POINTS, 0, 512*512);
     gl.disable(gl.BLEND);

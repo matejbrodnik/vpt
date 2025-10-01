@@ -10,6 +10,7 @@ void mipmap(
     int b = 0;
     float root = 1.0;
     float leaf = 1.0;
+    float total = 0.0;
     for(int i = 8; i >= 0; i--) {
         float nw = texelFetch(MIP, ivec2(a, b), i).r;
         float sw = texelFetch(MIP, ivec2(a, b + 1), i).r;
@@ -27,22 +28,22 @@ void mipmap(
         if(normRand < nw) {
             a *= 2;
             b *= 2;
-            leaf = nw;
+            leaf = nw * sum;
         }
         else if(normRand < sw + nw) {
             a *= 2;
             b = (b + 1) * 2;
-            leaf = sw;
+            leaf = sw * sum;
         }
         else if(normRand < ne + sw + nw) {
             a = (a + 1) * 2;
             b *= 2;
-            leaf = ne;
+            leaf = ne * sum;
         }
         else {
             a = (a + 1) * 2;
             b = (b + 1) * 2;
-            leaf = se;
+            leaf = se * sum;
         }
         if(i == 8) {
             root = sum;

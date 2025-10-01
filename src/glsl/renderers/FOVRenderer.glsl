@@ -142,7 +142,7 @@ void main() {
     uint state = hash(uvec3(floatBitsToUint(mappedPosition.x), floatBitsToUint(mappedPosition.y), floatBitsToUint(uRandSeed)));
 
     // && photon.samples >= uint(10)
-    if(uReset != 0.0) {
+    if(uReset == 0.0) {
         resetPhotonHard(state, photon);
     }
     else {
@@ -181,14 +181,18 @@ void main() {
             // out of bounds
             vec4 envSample = sampleEnvironmentMap(photon.direction);
             vec3 radiance = photon.transmittance * envSample.rgb;
-            photon.samples2 += photon.pdf;
-            photon.radiance += (radiance * photon.pdf);
+            photon.samples2 += 1.0;
+            photon.radiance += radiance;            
+            // photon.samples2 += photon.pdf;
+            // photon.radiance += (radiance * photon.pdf);
             // photon.radiance += (radiance - photon.radiance) / photon.samples2;
             resetPhoton(state, photon);
         } else if (fortuneWheel < PAbsorption) {
             // absorption
             vec3 radiance = vec3(0);
-            photon.samples2 += photon.pdf;
+            photon.samples2 += 1.0;
+            // photon.samples2 += photon.pdf;
+
             // photon.radiance += (radiance - photon.radiance) / photon.samples2;
             resetPhoton(state, photon);
         } else if (fortuneWheel < PAbsorption + PScattering) {
@@ -196,8 +200,14 @@ void main() {
             photon.transmittance *= volumeSample.rgb;
             photon.direction = sampleHenyeyGreenstein(state, uAnisotropy, photon.direction);
             photon.bounces++;
+            if(i == uSteps - 1u && uReset == 1.0) {
+                i--;
+            }
         } else {
             // null collision
+            if(i == uSteps - 1u && uReset == 1.0) {
+                i--;
+            }
         }
     }
 

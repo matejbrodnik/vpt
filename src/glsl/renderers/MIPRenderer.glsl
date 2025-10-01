@@ -139,9 +139,34 @@ in vec2 vPosition;
 out vec4 oColor;
 
 void main() {
-    float acc = texture(uAccumulator, vPosition).r ;
-    acc = pow(acc, 0.4);
-    // acc += 0.05;
+    float acc = texture(uAccumulator, vPosition).r;
+
+    //dilation
+    float maxVal = 0.0;
+    // int k = 1;
+    // if(acc == 0.0) {
+    //     for (int dx = -k; dx <= k; ++dx) {
+    //         for (int dy = -k; dy <= k; ++dy) {
+    //             vec2 offset = vec2(dx, dy) / 512.0;
+    //             float val = texture(uAccumulator, vPosition + offset).r;
+    //             maxVal = max(maxVal, val);
+    //         }
+    //     }
+    //     acc = maxVal;
+    // }
+
+    acc = pow(acc, 0.7);
+    
+    // float delta = 0.5;
+    // if(acc != 0.0) {
+    //     acc = max(0.0, acc - delta);
+    //     acc += delta;
+    // }
+
+    // acc = pow(acc, 0.3);
+    // if(acc != 0.0) {
+    //     acc = 1.4 - acc;
+    // }
     oColor = vec4(acc, acc, acc, 1);
 }
 

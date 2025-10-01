@@ -171,12 +171,20 @@ async _handleVolumeLoad(e) {
         if (readerClass) {
             const loaderClass = LoaderFactory('blob');
             const loader = new loaderClass(options.file);
+            let dim = options.file.name.split("_")[1].split("x");
+            console.log(dim);
             const reader = new readerClass(loader, {
-                width  : options.dimensions[0],
-                height : options.dimensions[1],
-                depth  : options.dimensions[2],
+                width  : dim[0],
+                height : dim[1],
+                depth  : dim[2],
                 bits   : options.precision,
             });
+            // const reader = new readerClass(loader, {
+            //     width  : options.dimensions[0],
+            //     height : options.dimensions[1],
+            //     depth  : options.dimensions[2],
+            //     bits   : options.precision,
+            // });
             this.renderingContext.stopRendering();
             await this.renderingContext.setVolume(reader);
             this.renderingContext.startRendering();
