@@ -6,7 +6,7 @@ const [ SHADERS, MIXINS ] = await Promise.all([
     'mixins.json',
 ].map(url => fetch(url).then(response => response.json())));
 
-export class DifferenceToneMapper extends AbstractToneMapper {
+export class DeviationToneMapper extends AbstractToneMapper {
 
 constructor(gl, texture, options = {}) {
     super(gl, texture, options);
@@ -48,8 +48,8 @@ constructor(gl, texture, options = {}) {
     ]);
 
     this._program = WebGL.buildPrograms(gl, {
-        DifferenceToneMapper: SHADERS.tonemappers.DifferenceToneMapper
-    }, MIXINS).DifferenceToneMapper;
+        DeviationToneMapper: SHADERS.tonemappers.DeviationToneMapper
+    }, MIXINS).DeviationToneMapper;
     this._Ref = null;
 }
 
@@ -69,18 +69,18 @@ _renderFrame() {
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this._texture);
     gl.uniform1i(uniforms.uTexture, 0);
-    // if(this.compare == 0.0) {
-    //     gl.activeTexture(gl.TEXTURE1);
-    //     gl.bindTexture(gl.TEXTURE_2D, this._texture);
-    //     gl.uniform1i(uniforms.uTexture2, 1);
-    // }
-    // else {
-        // console.log(this._Ref);
-        // console.log("0");
-        gl.activeTexture(gl.TEXTURE1);
-        gl.bindTexture(gl.TEXTURE_2D, this.copy);
-        gl.uniform1i(uniforms.uTexture2, 1);
-    // }
+
+    if(!this._lastTexture) {
+        console.log("ERROR!!!");
+    }
+
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, this._lastTexture);
+    gl.uniform1i(uniforms.uTexture2, 1);
+
+    // gl.activeTexture(gl.TEXTURE2);
+    // gl.bindTexture(gl.TEXTURE_2D, this._position);
+    // gl.uniform1i(uniforms.uPosition, 2);
 
     gl.uniform1f(uniforms.uLow, this.low);
     gl.uniform1f(uniforms.uMid, this.mid);
@@ -88,7 +88,6 @@ _renderFrame() {
     gl.uniform1f(uniforms.uSaturation, this.saturation);
     gl.uniform1f(uniforms.uGamma, this.gamma);
 
-    //gl.drawArrays(gl.POINTS, 0, 512*512);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
 }
 

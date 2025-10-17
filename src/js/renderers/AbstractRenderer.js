@@ -62,17 +62,6 @@ destroy(destroyRender = true) {
 }
 
 render() {
-    // if(this.count == 0) {
-    //     this.startTime = performance.now().toFixed(3);
-    // }
-    let gl = this._gl;
-    //let query = gl.createQuery();
-    //gl.beginQuery(this.ext.TIME_ELAPSED_EXT, query);
-    let ext = this.ext;
-    // this.query1 = gl.createQuery();
-    // this.query2 = gl.createQuery();
-    // ext.queryCounterEXT(this.query1, ext.TIMESTAMP_EXT);
-
     this._frameBuffer.use();
     this._generateFrame();
 
@@ -82,38 +71,8 @@ render() {
 
     this._renderBuffer.use();
     this._renderFrame();
-    //gl.endQuery(this.ext.TIME_ELAPSED_EXT);
-    // ext.queryCounterEXT(this.query2, ext.TIMESTAMP_EXT);
 
-    // if(this.count == 100) {
-    //     let endTime = performance.now().toFixed(3);
-    //     let elapsedTime = (endTime - this.startTime) / 100;
-    //     console.log(`${elapsedTime.toFixed(6)}`);
-    // }
-    // this.count++;
     this.ready = !this.ready;
-    // let query = this.query1;
-    // if(this.query1 && this.ready) {
-    //     let available = gl.getQueryParameter(this.query1, gl.QUERY_RESULT_AVAILABLE);
-    //     let disjoint = gl.getParameter(this.ext.GPU_DISJOINT_EXT);
-
-    //     if (available && !disjoint) {
-    //         let timeStart = gl.getQueryParameter(this.query1, gl.QUERY_RESULT);
-    //         console.log(`READ Time: ${(timeStart) / 1000000.0} ms`);
-    //     }
-    //     else {
-    //         console.log("no2");
-    //     }
-
-    //     if (available || disjoint) {
-    //         gl.deleteQuery(this.query1);
-    //         this.query1 = gl.createQuery();
-    //         gl.beginQuery(ext.TIME_ELAPSED_EXT, this.query1);
-    //     }
-    //     //this.ready = true;
-
-    // }
-    
 }
 
 reset() {

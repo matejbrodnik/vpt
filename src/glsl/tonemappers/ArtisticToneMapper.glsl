@@ -37,13 +37,7 @@ out vec4 oColor;
 
 void main() {
     vec4 color = texture(uTexture, vPosition);
-    // if (color.a > 100000.0) {
-    //     color = vec4(0.0, 0.0, 1.0, 1.0);
-    // }
 
-    // if(color.rgba == vec4(0)) {
-    //     color.rgba = vec4(1);
-    // }
     color = vec4(color.rgb / color.a, 1.0); 
     color = (color - uLow) / (uHigh - uLow);
     const vec3 gray = normalize(vec3(1));

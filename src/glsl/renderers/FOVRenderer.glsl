@@ -46,6 +46,7 @@ uniform sampler2D uPosition;
 uniform sampler2D uDirection;
 uniform sampler2D uTransmittance;
 uniform sampler2D uRadiance;
+uniform sampler2D uRadianceLast;
 
 uniform sampler3D uVolume;
 uniform sampler2D uTransferFunction;
@@ -69,7 +70,8 @@ layout (location = 0) out vec4 oPosition;
 layout (location = 1) out vec4 oDirection;
 layout (location = 2) out vec4 oTransmittance;
 layout (location = 3) out vec4 oRadiance;
-layout (location = 4) out vec4 oPositionA;
+layout (location = 4) out vec4 oRadianceLast;
+// layout (location = 4) out vec4 oPositionA;
 
 void resetPhoton(inout uint state, inout Photon photon) {
     vec3 from, to;
@@ -215,6 +217,8 @@ void main() {
     oRadiance = vec4(photon.radiance, photon.samples2);
     oPosition = vec4(photon.position.xy, photon.positionA);
     oTransmittance = vec4(photon.transmittance, photon.position.z);
+    oRadianceLast = vec4(photon.radiance, photon.samples2);
+
     // oPositionA = vec4(photon.positionA, 0, 0);
     // oPosition = vec4(photon.position, 0);
     // oTransmittance = vec4(photon.transmittance, 0);
@@ -234,7 +238,6 @@ out vec2 vPosition;
 uniform sampler2D uPosition;
 
 void main() {
-    
     int xCoord = gl_VertexID % 512;
     int yCoord = gl_VertexID / 512;
     vec2 aPosition = texelFetch(uPosition, ivec2(xCoord, yCoord), 0).zw;
@@ -250,16 +253,19 @@ precision highp float;
 precision highp sampler2D;
 
 uniform sampler2D uColor;
-//uniform sampler2D uMIP;
+uniform sampler2D uColor2;
 
 in vec2 vPosition;
 
 layout (location = 0) out vec4 oColor;
+layout (location = 1) out vec4 oColor2;
 
 void main() {
     vec2 mappedPosition = vPosition * 0.5 + 0.5;
     vec4 colorAndSamples = texture(uColor, vPosition);
+    vec4 colorAndSamples2 = texture(uColor2, vPosition);
     oColor = vec4(colorAndSamples.rgb, colorAndSamples.a);
+    oColor2 = vec4(colorAndSamples2.rgb, colorAndSamples2.a);
 }
 
 // #part /glsl/shaders/renderers/FOV/reset/vertex

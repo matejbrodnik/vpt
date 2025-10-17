@@ -1,4 +1,4 @@
-// #part /glsl/shaders/tonemappers/DifferenceToneMapper/vertex
+// #part /glsl/shaders/tonemappers/DeviationToneMapper/vertex
 
 #version 300 es
 
@@ -16,7 +16,7 @@ void main() {
     gl_Position = vec4(position, 0, 1);
 }
 
-// #part /glsl/shaders/tonemappers/DifferenceToneMapper/fragment
+// #part /glsl/shaders/tonemappers/DeviationToneMapper/fragment
 
 #version 300 es
 precision highp float;
@@ -31,7 +31,6 @@ uniform float uMid;
 uniform float uHigh;
 uniform float uSaturation;
 uniform float uGamma;
-uniform float uCompare;
 
 in vec2 vPosition;
 
@@ -43,10 +42,13 @@ void main() {
     if(color.rgb == vec3(0)) {
         color = vec4(1);
     }
-    color = vec4(color.rgb / color.a, 1.0); 
-    vec3 diff = abs(texture(uTexture2, vPosition).rgb - color.rgb);
+    color = vec4(color.rgb / color.a, 1.0);
+    color2 = vec4(color2.rgb / color2.a, 1.0);
     float mse = ((color2.r - color.r) * (color2.r - color.r) + (color2.g - color.g) * (color2.g - color.g) + (color2.b - color.b) * (color2.b - color.b)) / 3.0;
-    color = vec4(mse, 0.0, 0.0, 1.0) * 40.0;
+
+    vec3 deviation = abs(color.rgb / color.a - color2.rgb / color2.a) * 1.5;
+
+    color = vec4(mse, mse, mse, 1.0) * 5.0; 
 
     color = (color - uLow) / (uHigh - uLow);
     const vec3 gray = normalize(vec3(1));

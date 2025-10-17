@@ -15,6 +15,7 @@ import { FOVRenderer } from './renderers/FOVRenderer.js';
 import { MCMRenderer2 } from './renderers/MCMRenderer2.js';
 import { MIPRenderer } from './renderers/MIPRenderer.js';
 import { MCMRenderer } from './renderers/MCMRenderer.js';
+import { FOVRenderer2 } from './renderers/FOVRenderer2.js';
 
 const [ SHADERS, MIXINS ] = await Promise.all([
     'shaders.json',
@@ -245,7 +246,10 @@ chooseToneMapper(toneMapper) {
     });
 
     this.toneMapper.copy = this.copy;
-    this.toneMapper.compare = this.compare;
+    if (this.renderer instanceof FOVRenderer) {
+        this.toneMapper._lastTexture = this.renderer._renderBuffer.getAttachments().color[1];
+        this.toneMapper._position = this.renderer._accumulationBuffer.getReadAttachments().color[0];
+    }
 }
 
 render() {
@@ -302,7 +306,7 @@ render() {
                         else
                             this.timerMCM += elapsedTime;
                     }
-                    if((this.renderer instanceof FOVRenderer || this.renderer instanceof MCMRenderer2) && this.countFOV < 501)
+                    if((this.renderer instanceof FOVRenderer || this.renderer instanceof MCMRenderer2 || this.renderer instanceof FOVRenderer2) && this.countFOV < 501)
                         this.timerFOV += elapsedTime;
                     this.count++;
                 }
@@ -453,7 +457,7 @@ render() {
 
         this.countMCM++;
     }
-    else if((this.renderer instanceof FOVRenderer || this.renderer instanceof MCMRenderer2 )) {
+    else if((this.renderer instanceof FOVRenderer || this.renderer instanceof MCMRenderer2 || this.renderer instanceof FOVRenderer2)) {
         // if(this.count2 == 0) {
         //     this.timerF = performance.now().toFixed(3);
 

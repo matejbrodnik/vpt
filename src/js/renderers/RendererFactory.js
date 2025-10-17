@@ -6,6 +6,7 @@ import { MCSRenderer } from './MCSRenderer.js';
 import { MCMRenderer } from './MCMRenderer.js';
 import { MCMRenderer2 } from './MCMRenderer2.js';
 import { FOVRenderer } from './FOVRenderer.js';
+import { FOVRenderer2 } from './FOVRenderer2.js';
 import { DOSRenderer } from './DOSRenderer.js';
 import { DepthRenderer } from './DepthRenderer.js';
 
@@ -19,6 +20,7 @@ export function RendererFactory(which) {
         case 'mcm': return MCMRenderer;
         case 'mcm2': return MCMRenderer2;
         case 'fov': return FOVRenderer;
+        case 'fov2': return FOVRenderer2;
         case 'dos': return DOSRenderer;
         case 'depth': return DepthRenderer;
 

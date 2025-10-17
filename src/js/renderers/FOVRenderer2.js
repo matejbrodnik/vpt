@@ -11,7 +11,7 @@ const [ SHADERS, MIXINS ] = await Promise.all([
     'mixins.json',
 ].map(url => fetch(url).then(response => response.json())));
 
-export class FOVRenderer extends AbstractRenderer {
+export class FOVRenderer2 extends AbstractRenderer {
 
 constructor(gl, volume, camera, environmentTexture, options = {}) {
     super(gl, volume, camera, environmentTexture, options);
@@ -56,7 +56,7 @@ constructor(gl, volume, camera, environmentTexture, options = {}) {
 
     this.addEventListener('change', e => {
         const { name, value } = e.detail;
-        console.log("TRANSFER FUNCTION");
+
         if (name === 'transferFunction') {
             this.setTransferFunction(this.transferFunction);
         }
@@ -71,11 +71,7 @@ constructor(gl, volume, camera, environmentTexture, options = {}) {
         }
     });
 
-    this._programs = WebGL.buildPrograms(gl, SHADERS.renderers.FOV, MIXINS);
-    this._programs2 = WebGL.buildPrograms(gl, SHADERS.renderers.MCM, MIXINS);
-    this.ready = true;
-    this.generate = true;
-    this.laps = 0;
+    this._programs = WebGL.buildPrograms(gl, SHADERS.renderers.FOV2, MIXINS);
 }
 
 destroy() {
@@ -88,10 +84,6 @@ destroy() {
 }
 
 _resetFrame() {
-    // console.log(this.laps);
-    // this.laps++;
-    // this._context.cameraAnimator._zoom(-0.05);
-
     const gl = this._gl;
 
     if(this.mip == null) {
@@ -112,9 +104,6 @@ _resetFrame() {
 
     this._context.count2 = 0;
 
-    // this._context.cameraAnimator._zoom(0.05);
-
-
     const { program, uniforms } = this._programs.reset;
     gl.useProgram(program);
 
@@ -125,11 +114,11 @@ _resetFrame() {
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this._MIPmap.color[0]);
     gl.uniform1i(uniforms.uMIP, 0);
-    
+
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_NEAREST);
     //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.generateMipmap(gl.TEXTURE_2D);
-    
+
     const centerMatrix = mat4.fromTranslation(mat4.create(), [-0.5, -0.5, -0.5]);
     const modelMatrix = this._volumeTransform.globalMatrix;
     const viewMatrix = this._camera.transform.inverseGlobalMatrix;
@@ -151,16 +140,6 @@ _resetFrame() {
     ]);
 
     gl.drawArrays(gl.TRIANGLES, 0, 3);
-
-    let error = gl.getError();
-    if(error != 0)
-        console.log("ERROR", error);
-    this.resetMax = 4;
-    this.resetCount = 4;
-    //this.mip.destroy();
-
-    this._rebuildRender();
-
 }
 
 _generateFrame() {
@@ -203,32 +182,10 @@ _integrateFrame() {
     gl.activeTexture(gl.TEXTURE7);
     gl.bindTexture(gl.TEXTURE_2D, this._MIPmap.color[0]);
     gl.uniform1i(uniforms.uMIP, 7);
-    
-    gl.activeTexture(gl.TEXTURE8);
-    gl.bindTexture(gl.TEXTURE_2D, this._accumulationBuffer.getAttachments().color[4]);
-    gl.uniform1i(uniforms.uRadianceLast, 8);
-
-    // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR);
-
-    //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    // if(this.generate) {
-    //     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_NEAREST);
-    //     gl.generateMipmap(gl.TEXTURE_2D);
-    //     this.generate = false;
-    // }
 
     gl.uniform2f(uniforms.uInverseResolution, 1 / this._resolution, 1 / this._resolution);
     gl.uniform1f(uniforms.uRandSeed, Math.random());
     gl.uniform1f(uniforms.uBlur, 0);
-
-    gl.uniform1f(uniforms.uReset, this.resetCount);
-    
-    if(this.resetCount > 0) {
-        this.resetCount--;
-    }
-    else {
-        this.resetCount = this.resetMax;
-    }
 
     gl.uniform1f(uniforms.uExtinction, this.extinction);
     gl.uniform1f(uniforms.uAnisotropy, this.anisotropy);
@@ -253,7 +210,6 @@ _integrateFrame() {
         gl.COLOR_ATTACHMENT1,
         gl.COLOR_ATTACHMENT2,
         gl.COLOR_ATTACHMENT3,
-        gl.COLOR_ATTACHMENT4,
     ]);
 
     gl.drawArrays(gl.TRIANGLES, 0, 3);
@@ -261,54 +217,16 @@ _integrateFrame() {
 
 _renderFrame() {
     const gl = this._gl;
-    if(this.resetCount == 0) {
-        WebGL.createTexture(gl, {
-            texture : this._renderBuffer.getAttachments().color[1],
-            width   : this._resolution,
-            height  : this._resolution,
-            min     : gl.NEAREST,
-            mag     : gl.NEAREST,
-            format  : gl.RGBA,
-            iformat : gl.RGBA32F,
-            type    : gl.FLOAT,
-            data    : null,
-        });
-    }
+
     const { program, uniforms } = this._programs.render;
-    
-    gl.enable(gl.BLEND);
-    gl.blendFunc(gl.ONE, gl.ONE);
     gl.useProgram(program);
 
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this._accumulationBuffer.getAttachments().color[3]);
     gl.uniform1i(uniforms.uColor, 0);
 
-    gl.activeTexture(gl.TEXTURE1);
-    gl.bindTexture(gl.TEXTURE_2D, this._accumulationBuffer.getAttachments().color[4]);
-    // gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, this._resolution, this._resolution, 0, gl.RGBA, gl.FLOAT, null);
-    
-    gl.uniform1i(uniforms.uColor2, 1);
-    
-    gl.activeTexture(gl.TEXTURE2);
-    gl.bindTexture(gl.TEXTURE_2D, this._accumulationBuffer.getAttachments().color[0]);
-    gl.uniform1i(uniforms.uPosition, 2);
-
-    gl.drawBuffers([
-        gl.COLOR_ATTACHMENT0,
-        gl.COLOR_ATTACHMENT1,
-    ]);
-
-    gl.drawArrays(gl.POINTS, 0, 512*512);
-    gl.disable(gl.BLEND);
-
-    this.generate = true;
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
 }
-
-// getTexture() {
-//     return this._renderBuffer.getAttachments().color[1];
-// }
-
 
 _getFrameBufferSpec() {
     const gl = this._gl;
@@ -317,32 +235,6 @@ _getFrameBufferSpec() {
         height  : this._resolution,
         min     : gl.NEAREST,
         mag     : gl.NEAREST,
-        format  : gl.RGBA,
-        iformat : gl.RGBA32F,
-        type    : gl.FLOAT,
-    }];
-}
-
-_getRenderBufferSpec() {
-    const gl = this._gl;
-    return [{
-        width   : this._resolution,
-        height  : this._resolution,
-        min     : gl.NEAREST,
-        mag     : gl.NEAREST,
-        wrapS   : gl.CLAMP_TO_EDGE,
-        wrapT   : gl.CLAMP_TO_EDGE,
-        format  : gl.RGBA,
-        iformat : gl.RGBA32F,
-        type    : gl.FLOAT,
-    },
-    {
-        width   : this._resolution,
-        height  : this._resolution,
-        min     : gl.NEAREST,
-        mag     : gl.NEAREST,
-        wrapS   : gl.CLAMP_TO_EDGE,
-        wrapT   : gl.CLAMP_TO_EDGE,
         format  : gl.RGBA,
         iformat : gl.RGBA32F,
         type    : gl.FLOAT,
@@ -392,22 +284,11 @@ _getAccumulationBufferSpec() {
         type    : gl.FLOAT,
     };
 
-    const radianceLastBufferSpec = {
-        width   : this._resolution,
-        height  : this._resolution,
-        min     : gl.NEAREST,
-        mag     : gl.NEAREST,
-        format  : gl.RGBA,
-        iformat : gl.RGBA32F,
-        type    : gl.FLOAT,
-    };
-
     return [
         positionBufferSpec,
         directionBufferSpec,
         transmittanceBufferSpec,
         radianceBufferSpec,
-        radianceLastBufferSpec,
     ];
 }
 

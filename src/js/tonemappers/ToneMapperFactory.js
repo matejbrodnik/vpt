@@ -1,5 +1,6 @@
 import { ArtisticToneMapper } from './ArtisticToneMapper.js';
 import { DifferenceToneMapper } from './DifferenceToneMapper.js';
+import { DeviationToneMapper } from './DeviationToneMapper.js';
 import { RangeToneMapper } from './RangeToneMapper.js';
 import { ReinhardToneMapper } from './ReinhardToneMapper.js';
 import { Reinhard2ToneMapper } from './Reinhard2ToneMapper.js';
@@ -14,6 +15,7 @@ export function ToneMapperFactory(which) {
     switch (which) {
         case 'artistic': return ArtisticToneMapper;
         case 'difference': return DifferenceToneMapper;
+        case 'deviation': return DeviationToneMapper;
         case 'range': return RangeToneMapper;
         case 'reinhard': return ReinhardToneMapper;
         case 'reinhard2': return Reinhard2ToneMapper;
